@@ -1,17 +1,19 @@
 import torch
-import pytorch_lightning as pl
 from torch import nn
+import pytorch_lightning as pl
+
+from example.dot_detector.backbone import BkbnResNet50
 
 
 class DotDetector(pl.LightningModule):
-    def __init__(self, num_classes, backbone, encoder, decoder, encoder_head, decoder_head):
+    def __init__(self, num_classes):
         super(DotDetector, self).__init__()
         self.num_classes = num_classes  # 0은 background, 1-3은 red, green, blue
-        self._backbone = backbone  # 나중에 ResNet50 클래스로 구현
-        self._encoder = encoder  # 나중에 Encoder 클래스로 구현
-        self._decoder = decoder  # 나중에 Decoder 클래스로 구현
-        self._encoder_head = encoder_head  # 나중에 EncoderHead 클래스로 구현
-        self._decoder_head = decoder_head  # 나중에 DecoderHead 클래스로 구현
+        self._backbone = BkbnResNet50(pretrained=True)  # ResNet50 backbone
+        self._encoder = TransformerEncoder()  # 나중에 Encoder 클래스로 구현
+        self._decoder = TransformerDecoder()  # 나중에 Decoder 클래스로 구현
+        self._encoder_head = EncoderDetectorHead()  # 나중에 EncoderHead 클래스로 구현
+        self._decoder_head = DecoderDetectorHead()  # 나중에 DecoderHead 클래스로 구현
 
     def forward(self, batch):
         # image.shape=(B, 3, H, W), B=batch size, 3=(R,G,B) channels, H=image height, W=image width
@@ -24,6 +26,8 @@ class DotDetector(pl.LightningModule):
 
         # 사전 학습된 ResNet50 모델에 image를 입력하고 (B, C1, H/16, W/16) 크기의 feature map을 추출한다.
         bb_feature = self._backbone(image)
+        # bb_feature.shape = (B, C1, H/16, W/16)
+        bb_feature = bb_feature.flatten(start_dim=2)
 
         # transformer encoder를 이용해 새로운 특징을 생성한다.
         # en_feature.shape=(B, C2, H/16, W/16), C2=number of encoder feature map channels
