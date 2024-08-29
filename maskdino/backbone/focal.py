@@ -513,9 +513,8 @@ class FocalNet(nn.Module):
         self._freeze_stages()
 
 
-@BACKBONE_REGISTRY.register()
 class D2FocalNet(FocalNet, Backbone):
-    def __init__(self, cfg, input_shape):
+    def __init__(self, cfg):
         kw = cfg.MODEL.FOCAL
         assert kw.modelname in ['focalnet_L_384_22k', 'focalnet_L_384_22k_fl4', 'focalnet_XL_384_22k']
         kw = cfg.MODEL.FOCAL

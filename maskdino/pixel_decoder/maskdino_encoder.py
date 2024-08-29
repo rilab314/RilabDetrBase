@@ -20,23 +20,8 @@ from detectron2.layers import Conv2d, ShapeSpec, get_norm
 from detectron2.modeling import SEM_SEG_HEADS_REGISTRY
 
 from .position_encoding import PositionEmbeddingSine
-from ...utils.utils import _get_clones, _get_activation_fn
+from maskdino.utils.utils import _get_clones, _get_activation_fn
 from .ops.modules import MSDeformAttn
-
-
-def build_pixel_decoder(cfg, input_shape):
-    """
-    Build a pixel decoder from `cfg.MODEL.MaskDINO.PIXEL_DECODER_NAME`.
-    """
-    name = cfg.MODEL.SEM_SEG_HEAD.PIXEL_DECODER_NAME
-    model = SEM_SEG_HEADS_REGISTRY.get(name)(cfg, input_shape)
-    forward_features = getattr(model, "forward_features", None)
-    if not callable(forward_features):
-        raise ValueError(
-            "Only SEM_SEG_HEADS with forward_features method can be used as pixel decoder. "
-            f"Please implement forward_features for {name} to only return mask features."
-        )
-    return model
 
 
 # MSDeformAttn Transformer encoder in deformable detr
@@ -187,7 +172,6 @@ class MSDeformAttnTransformerEncoder(nn.Module):
         return output
 
 
-@SEM_SEG_HEADS_REGISTRY.register()
 class MaskDINOEncoder(nn.Module):
     """
     This is the multi-scale encoder in detection models, also named as pixel decoder in segmentation models.

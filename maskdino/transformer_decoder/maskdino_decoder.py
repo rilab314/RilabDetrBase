@@ -12,29 +12,13 @@ from torch.nn import functional as F
 
 from detectron2.config import configurable
 from detectron2.layers import Conv2d
-from detectron2.utils.registry import Registry
 from detectron2.structures import BitMasks
 
 from .dino_decoder import TransformerDecoder, DeformableTransformerDecoderLayer
-from ...utils.utils import MLP, gen_encoder_output_proposals, inverse_sigmoid
-from ...utils import box_ops
+from maskdino.utils.utils import MLP, gen_encoder_output_proposals, inverse_sigmoid
+from maskdino.utils import box_ops
 
 
-TRANSFORMER_DECODER_REGISTRY = Registry("TRANSFORMER_MODULE")
-TRANSFORMER_DECODER_REGISTRY.__doc__ = """
-Registry for transformer module in MaskDINO.
-"""
-
-
-def build_transformer_decoder(cfg, in_channels, mask_classification=True):
-    """
-    Build a instance embedding branch from `cfg.MODEL.INS_EMBED_HEAD.NAME`.
-    """
-    name = cfg.MODEL.MaskDINO.TRANSFORMER_DECODER_NAME
-    return TRANSFORMER_DECODER_REGISTRY.get(name)(cfg, in_channels, mask_classification)
-
-
-@TRANSFORMER_DECODER_REGISTRY.register()
 class MaskDINODecoder(nn.Module):
     @configurable
     def __init__(

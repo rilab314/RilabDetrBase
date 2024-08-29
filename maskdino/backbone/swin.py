@@ -683,10 +683,8 @@ class SwinTransformer(nn.Module):
         self._freeze_stages()
 
 
-@BACKBONE_REGISTRY.register()
 class D2SwinTransformer(SwinTransformer, Backbone):
-    def __init__(self, cfg, input_shape):
-
+    def __init__(self, cfg):
         pretrain_img_size = cfg.MODEL.SWIN.PRETRAIN_IMG_SIZE
         patch_size = cfg.MODEL.SWIN.PATCH_SIZE
         in_chans = 3

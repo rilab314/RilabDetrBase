@@ -11,8 +11,8 @@ import torch
 from torch import nn, Tensor
 from torch.cuda.amp import autocast
 
-from ...utils.utils import MLP, _get_clones, _get_activation_fn, gen_sineembed_for_position, inverse_sigmoid
-from ..pixel_decoder.ops.modules import MSDeformAttn
+from maskdino.utils.utils import MLP, _get_clones, _get_activation_fn, gen_sineembed_for_position, inverse_sigmoid
+from maskdino.pixel_decoder.ops.modules import MSDeformAttn
 
 
 class TransformerDecoder(nn.Module):

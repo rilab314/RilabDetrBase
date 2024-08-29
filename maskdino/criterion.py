@@ -20,7 +20,7 @@ from detectron2.projects.point_rend.point_features import (
     point_sample,
 )
 
-from ..utils.misc import is_dist_avail_and_initialized, nested_tensor_from_tensor_list
+from maskdino.utils.misc import is_dist_avail_and_initialized, nested_tensor_from_tensor_list
 from maskdino.utils import box_ops
 
 
