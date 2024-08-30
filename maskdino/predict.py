@@ -6,9 +6,7 @@ import detectron2.data.transforms as T
 from maskdino.utils.setup_cfg import setup_cfg
 from maskdino.maskdino_model import MaskDINO
 from maskdino.utils.print_util import print_structure
-from detectron2.engine.defaults import DefaultPredictor
-from detectron2.modeling import META_ARCH_REGISTRY, build_backbone, build_sem_seg_head
-from detectron2.structures import Boxes, ImageList, Instances, BitMasks
+
 
 
 def predict_main():
