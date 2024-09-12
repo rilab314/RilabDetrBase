@@ -14,11 +14,12 @@ def predict_main():
     model = MaskDINO(cfg)
     # print('\n========== model ==========\n', model)
     image = cv2.imread('/home/dolphin/choi_ws/SatLaneDet_2024/maskdino/images/animals.png')
+    image = cv2.resize(image, (1216, 800))  # 64의 배수로 맞춤
     pred = predict_impl(cfg, model, image)
-    print_structure(pred, 'pred')
 
 
 def predict_impl(cfg, model, original_image):
+    print_structure(original_image, 'original_image')
     model.eval()
     aug = T.ResizeShortestEdge(
         [cfg.INPUT.MIN_SIZE_TEST, cfg.INPUT.MIN_SIZE_TEST], cfg.INPUT.MAX_SIZE_TEST
@@ -34,7 +35,9 @@ def predict_impl(cfg, model, original_image):
         image.to(cfg.MODEL.DEVICE)
         inputs = {"image": image, "height": height, "width": width}
 
+        print_structure(inputs, 'inputs')
         predictions = model([inputs])
+        print_structure(predictions, 'predictions')
     return predictions
 
 

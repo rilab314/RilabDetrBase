@@ -19,6 +19,8 @@ from maskdino.criterion import SetCriterion
 from maskdino.matcher import HungarianMatcher
 from maskdino.utils import box_ops
 
+from maskdino.utils.print_util import print_structure
+
 
 class MaskDINO(nn.Module):
     """
@@ -183,6 +185,7 @@ class MaskDINO(nn.Module):
         images = ImageList.from_tensors(images, self.size_divisibility)
 
         features = self.backbone(images.tensor)
+        print_structure(features, 'backbone')
 
         if self.training:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]

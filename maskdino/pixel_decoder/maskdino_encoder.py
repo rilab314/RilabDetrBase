@@ -23,6 +23,8 @@ from .position_encoding import PositionEmbeddingSine
 from maskdino.utils.utils import _get_clones, _get_activation_fn
 from .ops.modules import MSDeformAttn
 
+from maskdino.utils.print_util import print_structure
+
 
 # MSDeformAttn Transformer encoder in deformable detr
 class MSDeformAttnTransformerEncoderOnly(nn.Module):
@@ -347,7 +349,11 @@ class MaskDINOEncoder(nn.Module):
     def forward_features(self, features, masks):
         """
         :param features: multi-scale features from the backbone
-        :param masks: image mask
+            {'res2': torch.Tensor, shape=torch.Size([1, 192, 200, 304]),
+             'res3: torch.Tensor, shape=torch.Size([1, 384, 100, 152]),
+             'res4': torch.Tensor, shape=torch.Size([1, 768, 50, 76]),
+             'res5': torch.Tensor, shape=torch.Size([1, 1536, 25, 38]),}
+        :param masks: image mask, 일단 None
         :return: enhanced multi-scale features and mask feature (1/4 resolution) for the decoder to produce binary mask
         """
         # backbone features
@@ -356,6 +362,9 @@ class MaskDINOEncoder(nn.Module):
         # additional downsampled features
         srcsl = []
         posl = []
+        # total_num_feature_levels : encoder에서 사용하는 feature level 수 (downsample feature 포함)
+        # transformer_num_feature_levels : backbone에서 올 것 같은? feature level 수
+        # input_proj : 채널이 다른 input feature들을 같은 채널의 벨터로 변환, 아래서는 conv에 stride 넣어서 downsample까지 함
         if self.total_num_feature_levels > self.transformer_num_feature_levels:
             smallest_feat = features[self.transformer_in_features[self.low_resolution_index]].float()
             _len_srcs = self.transformer_num_feature_levels
@@ -367,19 +376,23 @@ class MaskDINOEncoder(nn.Module):
                 srcsl.append(src)
                 posl.append(self.pe_layer(src))
         srcsl = srcsl[::-1]
-        # Reverse feature maps
+        # input_proj: 1x1 conv로 feature maps 채널 맞춤
         for idx, f in enumerate(self.transformer_in_features[::-1]):
             x = features[f].float()  # deformable detr does not support half precision
             srcs.append(self.input_proj[idx](x))
-            pos.append(self.pe_layer(x))
+            pos.append(self.pe_layer(x))  # positional encoding
         srcs.extend(srcsl) if self.feature_order == 'low2high' else srcsl.extend(srcs)
         pos.extend(posl) if self.feature_order == 'low2high' else posl.extend(pos)
         if self.feature_order != 'low2high':
             srcs = srcsl
             pos = posl
+
+        # srcs(5): [1, 256, 200, 304], [1, 256, 100, 152], [1, 256, 50, 76], [1, 256, 25, 38], [1, 256, 13, 19]
+        # pos: srcs와 동일
         y, spatial_shapes, level_start_index = self.transformer(srcs, masks, pos)
         bs = y.shape[0]
 
+        # transformer에서 다 flatten 해서 합쳐버린 feature들을 다시 scale 별로 쪼개기
         split_size_or_sections = [None] * self.total_num_feature_levels
         for i in range(self.total_num_feature_levels):
             if i < self.total_num_feature_levels - 1:
@@ -388,6 +401,7 @@ class MaskDINOEncoder(nn.Module):
                 split_size_or_sections[i] = y.shape[1] - level_start_index[i]
         y = torch.split(y, split_size_or_sections, dim=1)
 
+        # 원래 2차원 feature map으로 복원
         out = []
         multi_scale_features = []
         num_cur_levels = 0
@@ -404,10 +418,18 @@ class MaskDINOEncoder(nn.Module):
             # Following FPN implementation, we use nearest upsampling here
             y = cur_fpn + F.interpolate(out[self.high_resolution_index], size=cur_fpn.shape[-2:], mode="bilinear", align_corners=False)
             y = output_conv(y)
+            print('(encoder) FPN shapes:', cur_fpn.shape, out[self.high_resolution_index].shape, y.shape)
             out.append(y)
+            # 실제로 shape을 확인하면 cur_fpn, out[self.high_resolution_index], y 모두 똑같은  (1, 256, 200, 304) 나옴
+            # 'res2' (1/4) scale의 feature map, for문도 한 번밖에 반복되지 않음
+
+        # 근데 multi_scale_features = out[:5] 를 해버림, out에 방금 추가한 게 사라짐
         for o in out:
             if num_cur_levels < self.total_num_feature_levels:
                 multi_scale_features.append(o)
                 num_cur_levels += 1
+        # multi_scale_features(5) [[1, 256, 200, 304], [1, 256, 100, 152], [1, 256, 50, 76], [1, 256, 25, 38], [1, 256, 13, 19]]
+        # mask_feature = conv2d (1x1) -> decoder에서 mask 만드는데 사용
+        # 가운데 out[0] 출력한건 안쓰이던데
         return self.mask_features(out[-1]), out[0], multi_scale_features
 

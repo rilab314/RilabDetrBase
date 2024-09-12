@@ -19,9 +19,9 @@ def print_structure(data, title='', indent=0):
         print(' '*indent + title + ' {')
         for key, value in data.items():
             print_structure(value, key, indent + 2)
-        print(' ' * indent + '} \\' + title)
+        print(' ' * indent + '}')
     elif isinstance(data, list):
         print(' '*indent + title + ' [')
         for ind, value in enumerate(data):
             print_structure(value, str(ind), indent + 2)
-        print(' ' * indent + '] \\' + title)
+        print(' ' * indent + ']')
