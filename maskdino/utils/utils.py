@@ -33,7 +33,7 @@ def inverse_sigmoid(x, eps=1e-5):
 def gen_encoder_output_proposals(memory:Tensor, memory_padding_mask:Tensor, spatial_shapes:Tensor):
     """
     Input:
-        - memory: bs, \sum{hw}, d_model
+        - memory: bs, \sum{hw}, d_model (src_flatten in MaskDINODecoder.forward)
         - memory_padding_mask: bs, \sum{hw}
         - spatial_shapes: nlevel, 2
     Output:
@@ -59,8 +59,13 @@ def gen_encoder_output_proposals(memory:Tensor, memory_padding_mask:Tensor, spat
         proposal = torch.cat((grid, wh), -1).view(N_, -1, 4)
         proposals.append(proposal)
         _cur += (H_ * W_)
+    # proposals: [(bs, h_l*w_l, 4)], 각 스케일 별로 (x, y, w, h)의 기본값을 만들어 놓음
+    # x, y는 0~1 사이의 좌표로 정의, wh는 0.05 * 2^level 로 정의
     output_proposals = torch.cat(proposals, 1)
+    # 가장자리는 invalid
     output_proposals_valid = ((output_proposals > 0.01) & (output_proposals < 0.99)).all(-1, keepdim=True)
+    # inverse of sigmoid, probability -> log odds
+    # 확률이 아닌 좌표에 이런 짓을 왜 하지? -> 나중에 범위 제한 없는 Linear 출력과 더한 뒤 다시 sigmoid 하기 위해
     output_proposals = torch.log(output_proposals / (1 - output_proposals))
     output_proposals = output_proposals.masked_fill(memory_padding_mask.unsqueeze(-1), float('inf'))
     output_proposals = output_proposals.masked_fill(~output_proposals_valid, float('inf'))

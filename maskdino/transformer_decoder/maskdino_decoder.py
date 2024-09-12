@@ -17,6 +17,7 @@ from detectron2.structures import BitMasks
 from .dino_decoder import TransformerDecoder, DeformableTransformerDecoderLayer
 from maskdino.utils.utils import MLP, gen_encoder_output_proposals, inverse_sigmoid
 from maskdino.utils import box_ops
+from ..utils.print_util import print_structure
 
 
 class MaskDINODecoder(nn.Module):
@@ -144,7 +145,6 @@ class MaskDINODecoder(nn.Module):
         self.bbox_embed = nn.ModuleList(box_embed_layerlist)
         self.decoder.bbox_embed = self.bbox_embed
 
-
     @classmethod
     def from_config(cls, cfg, in_channels, mask_classification):
         ret = {}
@@ -169,7 +169,6 @@ class MaskDINODecoder(nn.Module):
         ret["learn_tgt"] = cfg.MODEL.MaskDINO.LEARN_TGT
         ret["total_num_feature_levels"] = cfg.MODEL.SEM_SEG_HEAD.TOTAL_NUM_FEATURE_LEVELS
         ret["semantic_ce_loss"] = cfg.MODEL.MaskDINO.TEST.SEMANTIC_ON and cfg.MODEL.MaskDINO.SEMANTIC_CE_LOSS and ~cfg.MODEL.MaskDINO.TEST.PANOPTIC_ON
-
         return ret
 
     def prepare_for_dn(self, targets, tgt, refpoint_emb, batch_size):
@@ -347,7 +346,9 @@ class MaskDINODecoder(nn.Module):
     def forward(self, x, mask_features, masks, targets=None):
         """
         :param x: input, a list of multi-scale feature
-        :param mask_features: is the per-pixel embeddings with resolution 1/4 of the original image,
+            encoder에서 출력하는 multi_scale_features (5 levels) [[1, 256, 200, 304],..., [1, 256, 13, 19]]
+        :param mask_features: is the per-pixel embeddings with resolution 1/4 of the original image
+            encoder에서 출력하는 self.mask_features(out[-1]) [1, 256, 200, 304]
         obtained by fusing backbone encoder encoded features. This is used to produce binary masks.
         :param masks: mask in the original image
         :param targets: used for denoising training
@@ -363,6 +364,8 @@ class MaskDINODecoder(nn.Module):
                     enable_mask = 1
         if enable_mask == 0:
             masks = [torch.zeros((src.size(0), src.size(2), src.size(3)), device=src.device, dtype=torch.bool) for src in x]
+
+        # feature map flatten 해서 하나로 합치고, level_start_index 만들기
         src_flatten = []
         mask_flatten = []
         spatial_shapes = []
@@ -373,6 +376,7 @@ class MaskDINODecoder(nn.Module):
             spatial_shapes.append(x[idx].shape[-2:])
             src_flatten.append(self.input_proj[idx](x[idx]).flatten(2).transpose(1, 2))
             mask_flatten.append(masks[i].flatten(1))
+        # src_flatten: encoder의 multi-scale feature를 linear projection 해서 한 줄로 합친것
         src_flatten = torch.cat(src_flatten, 1)  # bs, \sum{hxw}, c
         mask_flatten = torch.cat(mask_flatten, 1)  # bs, \sum{hxw}
         spatial_shapes = torch.as_tensor(spatial_shapes, dtype=torch.long, device=src_flatten.device)
@@ -383,19 +387,26 @@ class MaskDINODecoder(nn.Module):
         predictions_mask = []
         if self.two_stage:
             output_memory, output_proposals = gen_encoder_output_proposals(src_flatten, mask_flatten, spatial_shapes)
+            # Linear + LayerNorm
             output_memory = self.enc_output_norm(self.enc_output(output_memory))
+            # class_embed: Linear
             enc_outputs_class_unselected = self.class_embed(output_memory)
+            # _box_embed: MLP
             enc_outputs_coord_unselected = self._bbox_embed(
                 output_memory) + output_proposals  # (bs, \sum{hw}, 4) unsigmoid
             topk = self.num_queries
+            # 클래스 확률로 topk 인덱스 뽑고 거기에 해당하는 박스 뽑아
             topk_proposals = torch.topk(enc_outputs_class_unselected.max(-1)[0], topk, dim=1)[1]
             refpoint_embed_undetach = torch.gather(enc_outputs_coord_unselected, 1,
                                                    topk_proposals.unsqueeze(-1).repeat(1, 1, 4))  # unsigmoid
             refpoint_embed = refpoint_embed_undetach.detach()
-
+            # topk에 해당하는 input feature 도 뽑아
             tgt_undetach = torch.gather(output_memory, 1,
                                   topk_proposals.unsqueeze(-1).repeat(1, 1, self.hidden_dim))  # unsigmoid
 
+            # topk를 뽑은 feature와 mask_feature를 dot product하여 query(=topk) 마다 mask가 생성됨
+            # "bqc,bchw->bqhw"
+            # outputs_class: class prob (bs, q, c), outputs_mask: segmentation mask? (b, q, h, w)
             outputs_class, outputs_mask = self.forward_prediction_heads(tgt_undetach.transpose(0, 1), mask_features)
             tgt = tgt_undetach.detach()
             if self.learn_tgt:
@@ -405,6 +416,8 @@ class MaskDINODecoder(nn.Module):
             interm_outputs['pred_boxes'] = refpoint_embed_undetach.sigmoid()
             interm_outputs['pred_masks'] = outputs_mask
 
+            # 출력한 segmentation mask를 이용해서 box를 초기화 하기
+            # if two_stage 이기 떄문에 여기서 나오는 seg mask는 최종 출력이 아니고 box 초기화를 위한 용도인듯
             if self.initialize_box_type != 'no':
                 # convert masks into boxes to better initialize box in the decoder
                 assert self.initial_pred
@@ -442,17 +455,21 @@ class MaskDINODecoder(nn.Module):
             refpoint_embed=torch.cat([input_query_bbox,refpoint_embed],dim=1)
 
         hs, references = self.decoder(
-            tgt=tgt.transpose(0, 1),
-            memory=src_flatten.transpose(0, 1),
+            tgt=tgt.transpose(0, 1),  # query vectors
+            memory=src_flatten.transpose(0, 1),  # key, value from encoder features
             memory_key_padding_mask=mask_flatten,
             pos=None,
-            refpoints_unsigmoid=refpoint_embed.transpose(0, 1),
-            level_start_index=level_start_index,
-            spatial_shapes=spatial_shapes,
+            refpoints_unsigmoid=refpoint_embed.transpose(0, 1),  # query 좌표를 unsigmoid 한 것
+            level_start_index=level_start_index,  # memory 의 레벨별 feature의 시작 index
+            spatial_shapes=spatial_shapes,  # memory에 들어있는 feature shapes
             valid_ratios=valid_ratios,
-            tgt_mask=tgt_mask
-        )
+            tgt_mask=tgt_mask  # 원래의 query와 dn의 query가 서로 self attention으로 엮이지 않게 attention matrix에 곱해지는 mask,
+        )                      # MultiheadAttention.forward() 참조
+        # hs: output features of decoder layers
+        # references: output points of decoder layers (refined points from query)
+
         for i, output in enumerate(hs):
+            # decoder feature와 encoder feature를 dot product하여 segmentation mask와 class 출력
             outputs_class, outputs_mask = self.forward_prediction_heads(output.transpose(0, 1), mask_features, self.training or (i == len(hs)-1))
             predictions_class.append(outputs_class)
             predictions_mask.append(outputs_mask)
@@ -471,7 +488,7 @@ class MaskDINODecoder(nn.Module):
             predictions_class,predictions_mask=list(predictions_class),list(predictions_mask)
         elif self.training:  # this is to insure self.label_enc participate in the model
             predictions_class[-1] += 0.0*self.label_enc.weight.sum()
-
+        # 최종 출력은 마지막 레이어의 출력만 내보낸다.
         out = {
             'pred_logits': predictions_class[-1],
             'pred_masks': predictions_mask[-1],
@@ -485,12 +502,16 @@ class MaskDINODecoder(nn.Module):
         return out, mask_dict
 
     def forward_prediction_heads(self, output, mask_features, pred_mask=True):
+        # decoder_norm: LayerNorm
         decoder_output = self.decoder_norm(output)
         decoder_output = decoder_output.transpose(0, 1)
+        # class_embed: Linear
         outputs_class = self.class_embed(decoder_output)
         outputs_mask = None
         if pred_mask:
+            # mask_embed: MLP
             mask_embed = self.mask_embed(decoder_output)
+            # 여기서 cross product로 segmentation mask 만드는 듯
             outputs_mask = torch.einsum("bqc,bchw->bqhw", mask_embed, mask_features)
 
         return outputs_class, outputs_mask
