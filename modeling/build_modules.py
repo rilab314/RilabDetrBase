@@ -1,10 +1,13 @@
-from maskdino.utils.setup_cfg import setup_cfg
-from maskdino.backbone.swin import D2SwinTransformer
-from maskdino.pixel_decoder.maskdino_encoder import MaskDINOEncoder
-from maskdino.transformer_decoder.maskdino_decoder import MaskDINODecoder
-from maskdino.matcher import HungarianMatcher
-from maskdino.criterion import SetCriterion
-from maskdino.maskdino_model import MaskDINO
+from detectron2.config import CfgNode as CN
+
+from modeling.utils.print_util import print_structure
+from modeling.setup_cfg import setup_cfg
+from modeling.backbone.swin import D2SwinTransformer
+from modeling.encoder.maskdino_encoder import MaskDINOEncoder
+from modeling.decoder.maskdino_decoder import MaskDINODecoder
+from modeling.matcher import HungarianMatcher
+from modeling.criterion import SetCriterion
+from modeling.maskdino_model import MaskDINO
 
 
 def create_modules():
@@ -12,6 +15,7 @@ def create_modules():
     print('\n========== configs ==========\n', cfg)
     backbone = D2SwinTransformer(cfg)
     print('\n========== backbone ==========\n', backbone)
+    return
     encoder = MaskDINOEncoder(cfg, backbone.output_shape())
     print('\n========== encoder ==========\n', encoder)
     decoder = MaskDINODecoder(cfg, in_channels=cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM, mask_classification=True)
@@ -22,6 +26,19 @@ def create_modules():
     print('\n========== criterion ==========\n', criterion)
     model = MaskDINO(cfg)
     print('\n========== model ==========\n', model)
+
+
+def cfg_to_dict(cfg_node):
+    """Recursively convert CfgNode to a dictionary."""
+    if not isinstance(cfg_node, CN):
+        return cfg_node
+    cfg_dict = {}
+    for key, value in cfg_node.items():
+        if isinstance(value, CN):
+            cfg_dict[key] = cfg_to_dict(value)
+        else:
+            cfg_dict[key] = value
+    return cfg_dict
 
 
 def create_matcher(cfg):

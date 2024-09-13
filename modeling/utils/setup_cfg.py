@@ -2,7 +2,7 @@ import argparse
 from detectron2.config import get_cfg
 from detectron2.projects.deeplab import add_deeplab_config
 
-from maskdino.config import add_maskdino_config
+from modeling.config import add_maskdino_config
 
 
 def setup_cfg():
@@ -11,7 +11,7 @@ def setup_cfg():
     add_deeplab_config(cfg)
     add_maskdino_config(cfg)
     cfg.merge_from_file(args.config_file)
-    cfg.merge_from_list(args.opts)
+    # cfg.merge_from_list(args.opts)
     cfg.freeze()
     return cfg
 
@@ -20,7 +20,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description="maskdino demo for builtin configs")
     parser.add_argument(
         "--config-file",
-        default="/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/maskdino/configs/maskdino_R50_bs16_50ep_4s_dowsample1_1024.yaml",
+        default="/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/modeling/configs/base_model.yaml",
         metavar="FILE",
         help="path to config file",
     )

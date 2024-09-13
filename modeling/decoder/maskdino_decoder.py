@@ -15,8 +15,8 @@ from detectron2.layers import Conv2d
 from detectron2.structures import BitMasks
 
 from .dino_decoder import TransformerDecoder, DeformableTransformerDecoderLayer
-from maskdino.utils.utils import MLP, gen_encoder_output_proposals, inverse_sigmoid
-from maskdino.utils import box_ops
+from modeling.utils.utils import MLP, gen_encoder_output_proposals, inverse_sigmoid
+from modeling.utils import box_ops
 from ..utils.print_util import print_structure
 
 

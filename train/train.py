@@ -23,7 +23,7 @@ from detectron2.data.detection_utils import read_image
 from detectron2.projects.deeplab import add_deeplab_config
 from detectron2.utils.logger import setup_logger
 
-from maskdino.config import add_maskdino_config
+from modeling.config import add_maskdino_config
 
 
 def create_modules():

@@ -20,10 +20,10 @@ from detectron2.layers import Conv2d, ShapeSpec, get_norm
 from detectron2.modeling import SEM_SEG_HEADS_REGISTRY
 
 from .position_encoding import PositionEmbeddingSine
-from maskdino.utils.utils import _get_clones, _get_activation_fn
+from modeling.utils.utils import _get_clones, _get_activation_fn
 from .ops.modules import MSDeformAttn
 
-from maskdino.utils.print_util import print_structure
+from modeling.utils.print_util import print_structure
 
 
 # MSDeformAttn Transformer encoder in deformable detr

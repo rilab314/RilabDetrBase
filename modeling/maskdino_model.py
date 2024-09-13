@@ -12,14 +12,14 @@ from detectron2.structures import Boxes, ImageList, Instances
 from torch import nn
 from torch.nn import functional as F
 
-from maskdino.backbone.swin import D2SwinTransformer
-from maskdino.pixel_decoder.maskdino_encoder import MaskDINOEncoder
-from maskdino.transformer_decoder.maskdino_decoder import MaskDINODecoder
-from maskdino.criterion import SetCriterion
-from maskdino.matcher import HungarianMatcher
-from maskdino.utils import box_ops
+from modeling.backbone.swin import D2SwinTransformer
+from modeling.encoder.maskdino_encoder import MaskDINOEncoder
+from modeling.decoder.maskdino_decoder import MaskDINODecoder
+from modeling.criterion import SetCriterion
+from modeling.matcher import HungarianMatcher
+from modeling.utils import box_ops
 
-from maskdino.utils.print_util import print_structure
+from modeling.utils.print_util import print_structure
 
 
 class MaskDINO(nn.Module):
