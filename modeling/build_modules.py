@@ -15,10 +15,9 @@ def create_modules():
     print('\n========== config ==========\n', cfg)
     backbone = D2SwinTransformer(cfg)
     print('\n========== backbone ==========\n', backbone)
-    print('backbone output shape:', backbone.output_shape())
-    return
     encoder = MaskDINOEncoder(cfg, backbone.output_shape())
     print('\n========== encoder ==========\n', encoder)
+    return
     decoder = MaskDINODecoder(cfg, in_channels=cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM, mask_classification=True)
     print('\n========== decoder ==========\n', decoder)
     matcher = create_matcher(cfg)

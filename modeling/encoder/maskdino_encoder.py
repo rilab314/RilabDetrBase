@@ -188,7 +188,6 @@ class MaskDINOEncoder(nn.Module):
         transformer_dim_feedforward: int,
         transformer_enc_layers: int,
         conv_dim: int,
-        mask_dim: int,
         norm: Optional[Union[str, Callable]] = None,
         # deformable transformer encoder args
         transformer_in_features: List[str],
@@ -276,16 +275,6 @@ class MaskDINOEncoder(nn.Module):
         N_steps = conv_dim // 2
         self.pe_layer = PositionEmbeddingSine(N_steps, normalize=True)
 
-        self.mask_dim = mask_dim
-        # use 1x1 conv instead
-        self.mask_features = Conv2d(
-            conv_dim,
-            mask_dim,
-            kernel_size=1,
-            stride=1,
-            padding=0,
-        )
-        weight_init.c2_xavier_fill(self.mask_features)
         # extra fpn levels
         stride = min(self.transformer_feature_strides)
         self.num_fpn_levels = max(int(np.log2(stride) - np.log2(self.common_stride)), 1)
@@ -327,22 +316,21 @@ class MaskDINOEncoder(nn.Module):
     def from_config(cls, cfg, input_shape: Dict[str, ShapeSpec]):
         ret = {}
         ret["input_shape"] = {
-            k: v for k, v in input_shape.items() if k in cfg.MODEL.SEM_SEG_HEAD.IN_FEATURES
+            k: v for k, v in input_shape.items() if k in cfg.MODEL.ENCODER.IN_FEATURES
         }
-        ret["conv_dim"] = cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM
-        ret["mask_dim"] = cfg.MODEL.SEM_SEG_HEAD.MASK_DIM
-        ret["norm"] = cfg.MODEL.SEM_SEG_HEAD.NORM
-        ret["transformer_dropout"] = cfg.MODEL.MaskDINO.DROPOUT
-        ret["transformer_nheads"] = cfg.MODEL.MaskDINO.NHEADS
-        ret["transformer_dim_feedforward"] = cfg.MODEL.SEM_SEG_HEAD.DIM_FEEDFORWARD  # deformable transformer encoder
+        ret["conv_dim"] = cfg.MODEL.ENCODER.HIDDEN_DIM
+        ret["norm"] = cfg.MODEL.ENCODER.NORM
+        ret["transformer_dropout"] = cfg.MODEL.ENCODER.DROPOUT
+        ret["transformer_nheads"] = cfg.MODEL.ENCODER.NUM_HEADS
+        ret["transformer_dim_feedforward"] = cfg.MODEL.ENCODER.DIM_FEEDFORWARD  # deformable transformer encoder
         ret[
             "transformer_enc_layers"
-        ] = cfg.MODEL.SEM_SEG_HEAD.TRANSFORMER_ENC_LAYERS  # a separate config
-        ret["transformer_in_features"] = cfg.MODEL.SEM_SEG_HEAD.DEFORMABLE_TRANSFORMER_ENCODER_IN_FEATURES  # ['res3', 'res4', 'res5']
-        ret["common_stride"] = cfg.MODEL.SEM_SEG_HEAD.COMMON_STRIDE
-        ret["total_num_feature_levels"] = cfg.MODEL.SEM_SEG_HEAD.TOTAL_NUM_FEATURE_LEVELS
-        ret["num_feature_levels"] = cfg.MODEL.SEM_SEG_HEAD.NUM_FEATURE_LEVELS
-        ret["feature_order"] = cfg.MODEL.SEM_SEG_HEAD.FEATURE_ORDER
+        ] = cfg.MODEL.ENCODER.NUM_LAYERS  # a separate config
+        ret["transformer_in_features"] = cfg.MODEL.ENCODER.DEFORMABLE_TRANSFORMER_ENCODER_IN_FEATURES
+        ret["common_stride"] = cfg.MODEL.ENCODER.COMMON_STRIDE
+        ret["total_num_feature_levels"] = cfg.MODEL.ENCODER.TOTAL_NUM_FEATURE_LEVELS
+        ret["num_feature_levels"] = cfg.MODEL.ENCODER.NUM_FEATURE_LEVELS
+        ret["feature_order"] = cfg.MODEL.ENCODER.FEATURE_ORDER
         return ret
 
     @autocast(enabled=False)
@@ -429,7 +417,5 @@ class MaskDINOEncoder(nn.Module):
                 multi_scale_features.append(o)
                 num_cur_levels += 1
         # multi_scale_features(5) [[1, 256, 200, 304], [1, 256, 100, 152], [1, 256, 50, 76], [1, 256, 25, 38], [1, 256, 13, 19]]
-        # mask_feature = conv2d (1x1) -> decoder에서 mask 만드는데 사용
-        # 가운데 out[0] 출력한건 안쓰이던데
-        return self.mask_features(out[-1]), out[0], multi_scale_features
+        return multi_scale_features
 
