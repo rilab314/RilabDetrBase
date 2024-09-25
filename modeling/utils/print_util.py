@@ -15,6 +15,8 @@ def print_structure(data, title='', indent=0):
             quantile = np.round(np.quantile(data, np.array([0, 0.2, 0.5, 0.8, 1.])), decimals=5)
             msg += f", quantile={quantile}"
         print(msg)
+    elif len(str(data)) < 150:
+        print(' ' * indent + title + ':', data)
     elif isinstance(data, dict):
         print(' '*indent + title + ' {')
         for key, value in data.items():
@@ -25,3 +27,6 @@ def print_structure(data, title='', indent=0):
         for ind, value in enumerate(data):
             print_structure(value, str(ind), indent + 2)
         print(' ' * indent + ']')
+    else:
+        print(' ' * indent + title + ':', data)
+

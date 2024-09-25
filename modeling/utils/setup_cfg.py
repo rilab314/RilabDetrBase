@@ -20,7 +20,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description="maskdino demo for builtin configs")
     parser.add_argument(
         "--config-file",
-        default="/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/modeling/configs/base_model.yaml",
+        default="/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/modeling/configs/maskdino_R50_bs16_50ep_4s_dowsample1_1024.yaml",
         metavar="FILE",
         help="path to config file",
     )
@@ -51,3 +51,8 @@ def get_parser():
         nargs=argparse.REMAINDER,
     )
     return parser
+
+
+if __name__ == "__main__":
+    cfg = setup_cfg()
+    print(cfg)

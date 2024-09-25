@@ -2,27 +2,48 @@ import argparse
 from detectron2.config import get_cfg
 from detectron2.projects.deeplab import add_deeplab_config
 from detectron2.config import CfgNode as CN
+import yaml
+
+from modeling.utils.print_util import print_structure
 
 
 def setup_cfg():
     args = get_parser().parse_args()
-    cfg = get_cfg()
-    print('\n========== empty config ==========\n', cfg)
-    add_detr_config(cfg)
-    cfg.merge_from_file(args.config_file)
+    cfg = load_cfg_from_yaml(args.config_file)
     cfg.freeze()
     return cfg
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(description="maskdino demo for builtin configs")
+    parser = argparse.ArgumentParser(description='maskdino demo for builtin configs')
     parser.add_argument(
-        "--config-file",
-        default="/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/modeling/configs/base_model.yaml",
-        metavar="FILE",
-        help="path to config file",
+        '--config-file',
+        default='/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/modeling/configs/base_model.yaml',
+        metavar='FILE',
+        help='path to config file',
     )
     return parser
+
+
+def load_cfg_from_yaml(yaml_file):
+    print('filename', yaml_file)
+    with open(yaml_file, 'r') as f:
+        yaml_cfg = yaml.safe_load(f)
+
+    cfg = get_cfg()
+    print('===== empty config =====\n', cfg)
+    cfg = create_cfg_node(cfg, yaml_cfg)
+    return cfg
+
+
+def create_cfg_node(cfg_node, yaml_dict):
+    for key, value in yaml_dict.items():
+        if isinstance(value, dict):
+            child = cfg_node[key] if key in cfg_node else CN()
+            cfg_node[key] = create_cfg_node(child, value)
+        else:
+            cfg_node[key] = value
+    return cfg_node
 
 
 def cfg_to_dict(cfg_node):
@@ -32,49 +53,22 @@ def cfg_to_dict(cfg_node):
     for key, value in cfg_node.items():
         if isinstance(value, CN):
             cfg_dict[key] = cfg_to_dict(value)
+        elif isinstance(value, tuple):
+            cfg_dict[key] = list(value)
         else:
             cfg_dict[key] = value
     return cfg_dict
 
 
-def add_detr_config(cfg):
-    # swin transformer backbone
-    cfg.MODEL.SWIN = CN()
-    cfg.MODEL.SWIN.PRETRAIN_IMG_SIZE = 224
-    cfg.MODEL.SWIN.PATCH_SIZE = 4
-    cfg.MODEL.SWIN.EMBED_DIM = 96
-    cfg.MODEL.SWIN.DEPTHS = [2, 2, 6, 2]
-    cfg.MODEL.SWIN.NUM_HEADS = [3, 6, 12, 24]
-    cfg.MODEL.SWIN.WINDOW_SIZE = 7
-    cfg.MODEL.SWIN.MLP_RATIO = 4.0
-    cfg.MODEL.SWIN.QKV_BIAS = True
-    cfg.MODEL.SWIN.QK_SCALE = None
-    cfg.MODEL.SWIN.DROP_RATE = 0.0
-    cfg.MODEL.SWIN.ATTN_DROP_RATE = 0.0
-    cfg.MODEL.SWIN.DROP_PATH_RATE = 0.3
-    cfg.MODEL.SWIN.APE = False
-    cfg.MODEL.SWIN.PATCH_NORM = True
-    cfg.MODEL.SWIN.OUT_FEATURES = ["res2", "res3", "res4", "res5"]
-    cfg.MODEL.SWIN.USE_CHECKPOINT = False
-    cfg.MODEL.SWIN.WEIGHTS = ''
-
-    # direct model configs
-    cfg.MODEL.BACKBONE = CN()
-    cfg.MODEL.BACKBONE.NAME = 'Swin'
-    cfg.MODEL.BACKBONE.DIVISIBILITY = 32
-
-    # encoder/decoder common config
-    cfg.MODEL.ENCODER = CN()
-    cfg.MODEL.ENCODER.ENCODER_NAME = "MaskDINOEncoder"
-    cfg.MODEL.ENCODER.DIM_FEEDFORWARD = 1024
-    cfg.MODEL.ENCODER.COMMON_STRIDE = 4
-    cfg.MODEL.ENCODER.NUM_LAYERS = 6  # TRANSFORMER_ENC_LAYERS
-    cfg.MODEL.ENCODER.NORM = "GN"
-    cfg.MODEL.ENCODER.HIDDEN_DIM = 256
-    cfg.MODEL.ENCODER.NHEADS = 8
-    cfg.MODEL.ENCODER.NUM_CLASSES = 10
+def save_cfg_to_yaml(cfg, output_yaml_file):
+    cfg_dict = cfg_to_dict(cfg)
+    with open(output_yaml_file, 'w') as f:
+        yaml.dump(cfg_dict, f, default_flow_style=False)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     cfg = setup_cfg()
+    print('===== setup cfg =====\n', cfg)
+    out_file = '/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/modeling/configs/base_model_out.yaml'
+    save_cfg_to_yaml(cfg, out_file)
 

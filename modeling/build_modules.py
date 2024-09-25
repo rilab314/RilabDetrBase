@@ -12,9 +12,10 @@ from modeling.maskdino_model import MaskDINO
 
 def create_modules():
     cfg = setup_cfg()
-    print('\n========== configs ==========\n', cfg)
+    print('\n========== config ==========\n', cfg)
     backbone = D2SwinTransformer(cfg)
     print('\n========== backbone ==========\n', backbone)
+    print('backbone output shape:', backbone.output_shape())
     return
     encoder = MaskDINOEncoder(cfg, backbone.output_shape())
     print('\n========== encoder ==========\n', encoder)

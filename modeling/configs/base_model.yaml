@@ -5,21 +5,29 @@ MODEL:
     NAME: "D2SwinTransformer"
     DIVISIBILITY: 64
   SWIN:
-    EMBED_DIM: 192
-    DEPTHS: [ 2, 2, 18, 2 ]
-    NUM_HEADS: [ 6, 12, 24, 48 ]
-    WINDOW_SIZE: 12
     APE: False
+    ATTN_DROP_RATE: 0.0
+    DEPTHS: [2, 2, 18, 2]
     DROP_PATH_RATE: 0.3
+    DROP_RATE: 0.0
+    EMBED_DIM: 192
+    MLP_RATIO: 4.0
+    NUM_HEADS: [6, 12, 24, 48]
+    OUT_FEATURES: ['res2', 'res3', 'res4', 'res5']
     PATCH_NORM: True
+    PATCH_SIZE: 4
     PRETRAIN_IMG_SIZE: 384
+    QKV_BIAS: True
+    QK_SCALE: None
+    USE_CHECKPOINT: False
+    WINDOW_SIZE: 12
     WEIGHTS: "swin_large_patch4_window12_384_22k.pkl"
   ENCODER:
     ENCODER_NAME: "MaskDINOEncoder"
     DIM_FEEDFORWARD: 1024
     HIDDEN_DIM: 256
     COMMON_STRIDE: 4
-    NHEADS: 8
+    NUM_HEADS: 8
     NUM_LAYERS: 6  # TRANSFORMER_ENC_LAYERS
     NORM: "GN"
     NUM_CLASSES: 10
