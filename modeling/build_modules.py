@@ -1,10 +1,10 @@
 from detectron2.config import CfgNode as CN
 
 from modeling.utils.print_util import print_structure
-from modeling.setup_cfg import setup_cfg
+from modeling.utils.setup_cfg import setup_cfg
 from modeling.backbone.swin import D2SwinTransformer
-from modeling.encoder.maskdino_encoder import MaskDINOEncoder
-from modeling.decoder.maskdino_decoder import MaskDINODecoder
+from modeling.encoder import DINOEncoder
+from modeling.decoder import DINODecoder
 from modeling.matcher import HungarianMatcher
 from modeling.criterion import SetCriterion
 from modeling.maskdino_model import MaskDINO
@@ -15,9 +15,9 @@ def create_modules():
     print('\n========== config ==========\n', cfg)
     backbone = D2SwinTransformer(cfg)
     print('\n========== backbone ==========\n', backbone)
-    encoder = MaskDINOEncoder(cfg, backbone.output_shape())
+    encoder = DINOEncoder(cfg, backbone.output_shape())
     print('\n========== encoder ==========\n', encoder)
-    decoder = MaskDINODecoder(cfg)
+    decoder = DINODecoder(cfg)
     print('\n========== decoder ==========\n', decoder)
     return
     matcher = create_matcher(cfg)

@@ -8,8 +8,8 @@ from torch import nn
 from torch.nn import functional as F
 
 from modeling.backbone.swin import D2SwinTransformer
-from modeling.encoder.maskdino_encoder import MaskDINOEncoder
-from modeling.decoder.maskdino_decoder import MaskDINODecoder
+from modeling.encoder import DINOEncoder
+from modeling.decoder import DINODecoder
 from modeling.criterion import SetCriterion
 from modeling.matcher import HungarianMatcher
 from modeling.utils import box_ops
@@ -66,8 +66,8 @@ class DETRBaseModel(nn.Module):
     def from_config(cls, cfg):
         # build modules
         backbone = D2SwinTransformer(cfg)
-        encoder = MaskDINOEncoder(cfg, backbone.output_shape())
-        decoder = MaskDINODecoder(cfg, in_channels=cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM, mask_classification=True)
+        encoder = DINOEncoder(cfg, backbone.output_shape())
+        decoder = DINODecoder(cfg, in_channels=cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM, mask_classification=True)
         # build matcher
         cost_class_weight = cfg.MODEL.MaskDINO.COST_CLASS_WEIGHT
         cost_dice_weight = cfg.MODEL.MaskDINO.COST_DICE_WEIGHT

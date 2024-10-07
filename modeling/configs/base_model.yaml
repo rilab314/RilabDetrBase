@@ -23,7 +23,7 @@ MODEL:
     WINDOW_SIZE: 12
     WEIGHTS: "swin_large_patch4_window12_384_22k.pkl"
   ENCODER:
-    NAME: "MaskDINOEncoder"
+    NAME: "DINOEncoder"
     IN_FEATURES: ['res2', 'res3', 'res4', 'res5']
     DIM_FEEDFORWARD: 1024
     HIDDEN_DIM: 256
@@ -40,7 +40,7 @@ MODEL:
     NUM_FEATURE_LEVELS: 4
     FEATURE_ORDER: low2high
   DECODER:
-    NAME: "MaskDINODecoder"
+    NAME: "DINODecoder"
     DIM_FEEDFORWARD: 2048
     HIDDEN_DIM: 256
     NUM_OBJECT_QUERIES: 300

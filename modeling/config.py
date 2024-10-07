@@ -106,10 +106,10 @@ def add_maskdino_config(cfg):
     # adding transformer in pixel decoder
     cfg.MODEL.SEM_SEG_HEAD.TRANSFORMER_ENC_LAYERS = 0
     # pixel decoder
-    cfg.MODEL.SEM_SEG_HEAD.PIXEL_DECODER_NAME = "MaskDINOEncoder"
+    cfg.MODEL.SEM_SEG_HEAD.PIXEL_DECODER_NAME = "DINOEncoder"
 
     # transformer module
-    cfg.MODEL.MaskDINO.TRANSFORMER_DECODER_NAME = "MaskDINODecoder"
+    cfg.MODEL.MaskDINO.TRANSFORMER_DECODER_NAME = "DINODecoder"
 
     # LSJ aug
     cfg.INPUT.IMAGE_SIZE = 1024
