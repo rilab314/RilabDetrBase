@@ -46,6 +46,12 @@ def create_cfg_node(cfg_node, yaml_dict):
     return cfg_node
 
 
+def save_cfg_to_yaml(cfg, output_yaml_file):
+    cfg_dict = cfg_to_dict(cfg)
+    with open(output_yaml_file, 'w') as f:
+        yaml.dump(cfg_dict, f, default_flow_style=False)
+
+
 def cfg_to_dict(cfg_node):
     if not isinstance(cfg_node, CN):
         return cfg_node
@@ -58,12 +64,6 @@ def cfg_to_dict(cfg_node):
         else:
             cfg_dict[key] = value
     return cfg_dict
-
-
-def save_cfg_to_yaml(cfg, output_yaml_file):
-    cfg_dict = cfg_to_dict(cfg)
-    with open(output_yaml_file, 'w') as f:
-        yaml.dump(cfg_dict, f, default_flow_style=False)
 
 
 if __name__ == '__main__':

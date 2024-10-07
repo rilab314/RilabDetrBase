@@ -17,9 +17,9 @@ def create_modules():
     print('\n========== backbone ==========\n', backbone)
     encoder = MaskDINOEncoder(cfg, backbone.output_shape())
     print('\n========== encoder ==========\n', encoder)
-    return
-    decoder = MaskDINODecoder(cfg, in_channels=cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM, mask_classification=True)
+    decoder = MaskDINODecoder(cfg)
     print('\n========== decoder ==========\n', decoder)
+    return
     matcher = create_matcher(cfg)
     print('\n========== matcher ==========\n', matcher)
     criterion = create_criterion(cfg, matcher)
