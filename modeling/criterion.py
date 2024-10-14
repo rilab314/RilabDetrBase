@@ -130,7 +130,8 @@ class SetCriterion(nn.Module):
     """
 
     def __init__(self, num_classes, matcher, weight_dict, eos_coef, losses,
-                 num_points, oversample_ratio, importance_sample_ratio,dn="no",dn_losses=[], panoptic_on=False, semantic_ce_loss=False):
+                 num_points, oversample_ratio=0, importance_sample_ratio=0, dn="no", dn_losses=[],
+                 panoptic_on=False, semantic_ce_loss=False):
         """Create the criterion.
         Parameters:
             num_classes: number of object categories, omitting the special no-object category
@@ -354,8 +355,9 @@ class SetCriterion(nn.Module):
                 else:
                     output_idx = tgt_idx = torch.tensor([]).long().cuda()
                 exc_idx.append((output_idx, tgt_idx))
+
         indices = self.matcher(outputs_without_aux, targets)
-        # Compute the average number of target boxes accross all nodes, for normalization purposes
+        # Compute the average number of target boxes across all nodes, for normalization purposes
         num_masks = sum(len(t["labels"]) for t in targets)
         num_masks = torch.as_tensor(
             [num_masks], dtype=torch.float, device=next(iter(outputs.values())).device
@@ -435,8 +437,6 @@ class SetCriterion(nn.Module):
             "num_classes: {}".format(self.num_classes),
             "eos_coef: {}".format(self.eos_coef),
             "num_points: {}".format(self.num_points),
-            "oversample_ratio: {}".format(self.oversample_ratio),
-            "importance_sample_ratio: {}".format(self.importance_sample_ratio),
         ]
         _repr_indent = 4
         lines = [head] + [" " * _repr_indent + line for line in body]

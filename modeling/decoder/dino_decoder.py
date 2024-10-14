@@ -21,7 +21,6 @@ class DINODecoder(nn.Module):
     def __init__(
             self,
             in_channels,
-            num_classes: int,
             hidden_dim: int,
             dim_feedforward: int,
             dec_layers: int,
@@ -42,7 +41,6 @@ class DINODecoder(nn.Module):
         Args:
             in_channels: channels of the input features
             mask_classification: whether to add mask classifier or not
-            num_classes: number of classes
             hidden_dim: Transformer feature dimension
             nheads: number of heads
             dim_feedforward: feature dimension in feedforward network
@@ -76,7 +74,6 @@ class DINODecoder(nn.Module):
                 weight_init.c2_xavier_fill(self.input_proj[-1])
             else:
                 self.input_proj.append(nn.Sequential())
-        self.num_classes = num_classes
 
         # init decoder
         self.decoder_norm = decoder_norm = nn.LayerNorm(hidden_dim)
@@ -100,7 +97,6 @@ class DINODecoder(nn.Module):
     def from_config(cls, cfg):
         ret = {}
         ret["in_channels"] = cfg.MODEL.ENCODER.HIDDEN_DIM
-        ret["num_classes"] = cfg.MODEL.DECODER.NUM_CLASSES
         ret["hidden_dim"] = cfg.MODEL.DECODER.HIDDEN_DIM
         # Transformer parameters:
         ret["dim_feedforward"] = cfg.MODEL.DECODER.DIM_FEEDFORWARD

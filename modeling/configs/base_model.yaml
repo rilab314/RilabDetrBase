@@ -2,7 +2,7 @@ MODEL:
   PIXEL_MEAN: [ 123.675, 116.280, 103.530 ]
   PIXEL_STD: [ 58.395, 57.120, 57.375 ]
   BACKBONE:
-    NAME: "D2SwinTransformer"
+    NAME: 'D2SwinTransformer'
     DIVISIBILITY: 64
   SWIN:
     APE: False
@@ -21,17 +21,16 @@ MODEL:
     QK_SCALE: None
     USE_CHECKPOINT: False
     WINDOW_SIZE: 12
-    WEIGHTS: "swin_large_patch4_window12_384_22k.pkl"
+    WEIGHTS: 'swin_large_patch4_window12_384_22k.pkl'
   ENCODER:
-    NAME: "DINOEncoder"
+    NAME: 'DINOEncoder'
     IN_FEATURES: ['res2', 'res3', 'res4', 'res5']
     DIM_FEEDFORWARD: 1024
     HIDDEN_DIM: 256
     COMMON_STRIDE: 4
     NUM_HEADS: 8
     NUM_LAYERS: 6
-    NUM_CLASSES: 10
-    NORM: "GN"
+    NORM: 'GN'
     DROPOUT: 0.0
     DEFORMABLE_TRANSFORMER_ENCODER_IN_FEATURES: [ 'res2', 'res3', 'res4', 'res5' ]
     DEFORMABLE_TRANSFORMER_ENCODER_N_HEADS: 8
@@ -40,11 +39,10 @@ MODEL:
     NUM_FEATURE_LEVELS: 4
     FEATURE_ORDER: low2high
   DECODER:
-    NAME: "DINODecoder"
+    NAME: 'DINODecoder'
     DIM_FEEDFORWARD: 2048
     HIDDEN_DIM: 256
     NUM_OBJECT_QUERIES: 300
-    NUM_CLASSES: 10
     DROPOUT: 0.0
     NUM_LAYERS: 9  # 9+1, 9 decoder layers, add one for the loss on learnable query
     ENFORCE_INPUT_PROJ: False
@@ -52,5 +50,25 @@ MODEL:
     DN_NOISE_SCALE: 0.4
     DN_NUM: 100
     TOTAL_NUM_FEATURE_LEVELS: 4
+  MATCHER:
+    COST_TYPES: ['cls', 'box']  # ['cls', 'box', 'mask']
+    COST_CLASS: 1
+    COST_BOX: 1
+    COST_GIOU: 1
+    COST_MASK: 0
+    COST_DICE: 0
+    NUM_POINTS: 12_544  # 112*112
+  DEC_HEAD:
+    NUM_CLASSES: 10
+  CRITERION:
+    LOSS_TYPES: ['labels', 'boxes']  # ['labels', 'masks', 'boxes']
+    CLASS_WEIGHT: 4.0
+    BOX_WEIGHT: 5.0
+    GIOU_WEIGHT: 2.0
+    MASK_WEIGHT: 0.0
+    DICE_WEIGHT: 0.0
+    NUM_POINTS: 12_544  # 112*112
+    NO_OBJECT_WEIGHT: 0.1
+
 
 VERSION: 2
