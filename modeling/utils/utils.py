@@ -33,7 +33,7 @@ def inverse_sigmoid(x, eps=1e-5):
 def gen_encoder_output_proposals(memory:Tensor, memory_padding_mask:Tensor, spatial_shapes:Tensor):
     """
     Input:
-        - memory: bs, \sum{hw}, d_model (src_flatten in MaskDINODecoder.forward)
+        - memory: bs, \sum{hw}, d_model (src_flatten in DINODecoder.forward)
         - memory_padding_mask: bs, \sum{hw}
         - spatial_shapes: nlevel, 2
     Output:

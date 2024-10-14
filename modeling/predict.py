@@ -3,9 +3,9 @@ import cv2
 
 import detectron2.data.transforms as T
 
-from maskdino.utils.setup_cfg import setup_cfg
-from maskdino.maskdino_model import MaskDINO
-from maskdino.utils.print_util import print_structure
+from modeling.utils.setup_cfg import setup_cfg
+from modeling.maskdino_model import MaskDINO
+from modeling.utils.print_util import print_structure
 
 
 
@@ -13,7 +13,7 @@ def predict_main():
     cfg = setup_cfg()
     model = MaskDINO(cfg)
     # print('\n========== model ==========\n', model)
-    image = cv2.imread('/home/dolphin/choi_ws/SatLaneDet_2024/maskdino/images/animals.png')
+    image = cv2.imread('/home/dolphin/choi_ws/SatLaneDet_2024/modeling/images/animals.png')
     image = cv2.resize(image, (1216, 800))  # 64의 배수로 맞춤
     pred = predict_impl(cfg, model, image)
 

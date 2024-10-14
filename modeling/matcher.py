@@ -13,9 +13,10 @@ import torch.nn.functional as F
 from scipy.optimize import linear_sum_assignment
 from torch import nn
 from torch.cuda.amp import autocast
+from typing import List
 
 from detectron2.projects.point_rend.point_features import point_sample
-from maskdino.utils.box_ops import generalized_box_iou,box_cxcywh_to_xyxy
+from modeling.utils.box_ops import generalized_box_iou,box_cxcywh_to_xyxy
 
 
 def batch_dice_loss(inputs: torch.Tensor, targets: torch.Tensor):
@@ -81,8 +82,8 @@ class HungarianMatcher(nn.Module):
     while the others are un-matched (and thus treated as non-objects).
     """
 
-    def __init__(self, cost_class: float = 1, cost_mask: float = 1, cost_dice: float = 1, num_points: int = 0,
-                 cost_box: float = 0, cost_giou: float = 0, panoptic_on: bool = False):
+    def __init__(self, cost_types: List[str], cost_class: float = 1, cost_box: float = 0, cost_giou: float = 0,
+                 cost_mask: float = 1, cost_dice: float = 1, num_points: int = 0, panoptic_on: bool = False):
         """Creates the matcher
 
         Params:
@@ -91,6 +92,7 @@ class HungarianMatcher(nn.Module):
             cost_dice: This is the relative weight of the dice loss of the binary mask in the matching cost
         """
         super().__init__()
+        self.cost_types = cost_types
         self.cost_class = cost_class
         self.cost_mask = cost_mask
         self.cost_dice = cost_dice
@@ -104,7 +106,7 @@ class HungarianMatcher(nn.Module):
         self.num_points = num_points
 
     @torch.no_grad()
-    def memory_efficient_forward(self, outputs, targets, cost=["cls", "box", "mask"]):
+    def memory_efficient_forward(self, outputs, targets):
         """More memory-friendly matching. Change cost to compute only certain loss in matching"""
         bs, num_queries = outputs["pred_logits"].shape[:2]
 
@@ -113,9 +115,9 @@ class HungarianMatcher(nn.Module):
         # Iterate through batch size
         for b in range(bs):
             out_bbox = outputs["pred_boxes"][b]
-            if 'box' in cost:
+            if 'box' in self.cost_types:
                 tgt_bbox=targets[b]["boxes"]
-                cost_bbox = torch.cdist(out_bbox, tgt_bbox, p=1)
+                cost_bbox = torch.cdist(out_bbox, tgt_bbox, p=1)  # [num_queries, num_targets]
                 cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(out_bbox), box_cxcywh_to_xyxy(tgt_bbox))
             else:
                 cost_bbox = torch.tensor(0).to(out_bbox)
@@ -128,13 +130,13 @@ class HungarianMatcher(nn.Module):
             gamma = 2.0
             neg_cost_class = (1 - alpha) * (out_prob ** gamma) * (-(1 - out_prob + 1e-8).log())
             pos_cost_class = alpha * ((1 - out_prob) ** gamma) * (-(out_prob + 1e-8).log())
-            cost_class = pos_cost_class[:, tgt_ids] - neg_cost_class[:, tgt_ids]
+            cost_class = pos_cost_class[:, tgt_ids] - neg_cost_class[:, tgt_ids]  # [num_queries, num_targets]
 
             # Compute the classification cost. Contrary to the loss, we don't use the NLL,
             # but approximate it in 1 - proba[target class].
             # The 1 is a constant that doesn't change the matching, it can be ommitted.
             # cost_class = -out_prob[:, tgt_ids]
-            if 'mask' in cost:
+            if 'mask' in self.cost_types:
                 out_mask = outputs["pred_masks"][b]  # [num_queries, H_pred, W_pred]
                 # gt masks are already padded when preparing target
                 tgt_mask = targets[b]["masks"].to(out_mask)
@@ -185,8 +187,8 @@ class HungarianMatcher(nn.Module):
                 self.cost_mask * cost_mask
                 + self.cost_class * cost_class
                 + self.cost_dice * cost_dice
-                + self.cost_box*cost_bbox
-                + self.cost_giou*cost_giou
+                + self.cost_box * cost_bbox
+                + self.cost_giou * cost_giou
             )
             C = C.reshape(num_queries, -1).cpu()
             indices.append(linear_sum_assignment(C))
@@ -197,7 +199,7 @@ class HungarianMatcher(nn.Module):
         ]
 
     @torch.no_grad()
-    def forward(self, outputs, targets, cost=["cls", "box", "mask"]):
+    def forward(self, outputs, targets):
         """Performs the matching
 
         Params:
@@ -217,7 +219,7 @@ class HungarianMatcher(nn.Module):
             For each batch element, it holds:
                 len(index_i) = len(index_j) = min(num_queries, num_target_boxes)
         """
-        return self.memory_efficient_forward(outputs, targets, cost)
+        return self.memory_efficient_forward(outputs, targets)
 
     def __repr__(self, _repr_indent=4):
         head = "Matcher " + self.__class__.__name__
