@@ -22,7 +22,7 @@ from modeling.utils import box_ops
 from modeling.utils.print_util import print_structure
 
 
-class MaskDINO(nn.Module):
+class DINOModel(nn.Module):
     """
     Main class for mask classification semantic segmentation architectures.
     """
@@ -73,68 +73,29 @@ class MaskDINO(nn.Module):
 
     @classmethod
     def from_config(cls, cfg):
-        # build modules
         backbone = D2SwinTransformer(cfg)
         encoder = DINOEncoder(cfg, backbone.output_shape())
-        decoder = DINODecoder(cfg, in_channels=cfg.MODEL.SEM_SEG_HEAD.CONVS_DIM, mask_classification=True)
-        # build matcher
-        cost_class_weight = cfg.MODEL.MaskDINO.COST_CLASS_WEIGHT
-        cost_dice_weight = cfg.MODEL.MaskDINO.COST_DICE_WEIGHT
-        cost_mask_weight = cfg.MODEL.MaskDINO.COST_MASK_WEIGHT  #
-        cost_box_weight = cfg.MODEL.MaskDINO.COST_BOX_WEIGHT
-        cost_giou_weight = cfg.MODEL.MaskDINO.COST_GIOU_WEIGHT
+        decoder = DINODecoder(cfg)
         matcher = HungarianMatcher(
-            cost_class=cost_class_weight,
-            cost_mask=cost_mask_weight,
-            cost_dice=cost_dice_weight,
-            cost_box=cost_box_weight,
-            cost_giou=cost_giou_weight,
-            num_points=cfg.MODEL.MaskDINO.TRAIN_NUM_POINTS,
+            cost_types=cfg.MODEL.MATCHER.COST_TYPES,
+            cost_class=cfg.MODEL.MATCHER.COST_CLASS,
+            cost_box=cfg.MODEL.MATCHER.COST_BOX,
+            cost_giou=cfg.MODEL.MATCHER.COST_GIOU,
         )
-        # build criterion
-        num_classes = cfg.MODEL.SEM_SEG_HEAD.NUM_CLASSES
-        # Loss parameters:
-        deep_supervision = cfg.MODEL.MaskDINO.DEEP_SUPERVISION
-        no_object_weight = cfg.MODEL.MaskDINO.NO_OBJECT_WEIGHT
-
-        # loss weights
-        class_weight = cfg.MODEL.MaskDINO.CLASS_WEIGHT
-        dice_weight = cfg.MODEL.MaskDINO.DICE_WEIGHT
-        mask_weight = cfg.MODEL.MaskDINO.MASK_WEIGHT
-        box_weight = cfg.MODEL.MaskDINO.BOX_WEIGHT
-        giou_weight = cfg.MODEL.MaskDINO.GIOU_WEIGHT
-
-        weight_dict = {"loss_ce": class_weight}
-        weight_dict.update({"loss_mask": mask_weight, "loss_dice": dice_weight})
-        weight_dict.update({"loss_bbox": box_weight, "loss_giou": giou_weight})
-        # two stage is the query selection scheme
-        if cfg.MODEL.MaskDINO.TWO_STAGE:
-            interm_weight_dict = {}
-            interm_weight_dict.update({k + f'_interm': v for k, v in weight_dict.items()})
-            weight_dict.update(interm_weight_dict)
-
-        if deep_supervision:
-            dec_layers = cfg.MODEL.MaskDINO.DEC_LAYERS
-            aux_weight_dict = {}
-            for i in range(dec_layers):
-                aux_weight_dict.update({k + f"_{i}": v for k, v in weight_dict.items()})
-            weight_dict.update(aux_weight_dict)
-        if cfg.MODEL.MaskDINO.BOX_LOSS:
-            losses = ["labels", "masks", "boxes"]
-        else:
-            losses = ["labels", "masks"]
-
+        weight_dict = dict(
+            loss_ce=cfg.MODEL.CRITERION.CLASS_WEIGHT,
+            loss_bbox=cfg.MODEL.CRITERION.BOX_WEIGHT,
+            loss_giou=cfg.MODEL.CRITERION.GIOU_WEIGHT,
+            loss_mask=cfg.MODEL.CRITERION.MASK_WEIGHT,
+            loss_dice=cfg.MODEL.CRITERION.DICE_WEIGHT,
+        )
         criterion = SetCriterion(
-            num_classes=num_classes,
+            num_classes=cfg.MODEL.DEC_HEAD.NUM_CLASSES,
             matcher=matcher,
             weight_dict=weight_dict,
-            eos_coef=no_object_weight,
-            losses=losses,
-            num_points=cfg.MODEL.MaskDINO.TRAIN_NUM_POINTS,
-            oversample_ratio=cfg.MODEL.MaskDINO.OVERSAMPLE_RATIO,
-            importance_sample_ratio=cfg.MODEL.MaskDINO.IMPORTANCE_SAMPLE_RATIO,
-            panoptic_on=cfg.MODEL.MaskDINO.PANO_BOX_LOSS,
-            semantic_ce_loss=cfg.MODEL.MaskDINO.TEST.SEMANTIC_ON and cfg.MODEL.MaskDINO.SEMANTIC_CE_LOSS and not cfg.MODEL.MaskDINO.TEST.PANOPTIC_ON,
+            eos_coef=cfg.MODEL.CRITERION.NO_OBJECT_WEIGHT,
+            losses=cfg.MODEL.CRITERION.LOSS_TYPES,
+            num_points=cfg.MODEL.CRITERION.NUM_POINTS,
         )
 
         return {
@@ -142,10 +103,10 @@ class MaskDINO(nn.Module):
             "encoder": encoder,
             "decoder": decoder,
             "criterion": criterion,
-            "num_queries": cfg.MODEL.MaskDINO.NUM_OBJECT_QUERIES,
-            "object_mask_threshold": cfg.MODEL.MaskDINO.TEST.OBJECT_MASK_THRESHOLD,
-            "overlap_threshold": cfg.MODEL.MaskDINO.TEST.OVERLAP_THRESHOLD,
-            "size_divisibility": cfg.MODEL.MaskDINO.SIZE_DIVISIBILITY,
+            "num_queries": cfg.MODEL.DECODER.NUM_OBJECT_QUERIES,
+            "object_mask_threshold": cfg.MODEL.TEST.OBJECT_MASK_THRESHOLD,
+            "overlap_threshold": cfg.MODEL.TEST.OVERLAP_THRESHOLD,
+            "size_divisibility": cfg.MODEL.BACKBONE.DIVISIBILITY,
             "pixel_mean": cfg.MODEL.PIXEL_MEAN,
             "pixel_std": cfg.MODEL.PIXEL_STD,
         }

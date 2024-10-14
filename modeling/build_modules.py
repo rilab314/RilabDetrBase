@@ -7,7 +7,7 @@ from modeling.encoder import DINOEncoder
 from modeling.decoder import DINODecoder
 from modeling.matcher import HungarianMatcher
 from modeling.criterion import SetCriterion
-# from modeling.maskdino_model import MaskDINO
+from modeling.dino_model import DINOModel
 
 
 def create_modules():
@@ -23,8 +23,7 @@ def create_modules():
     print('\n========== matcher ==========\n', matcher)
     criterion = create_criterion(cfg, matcher)
     print('\n========== criterion ==========\n', criterion)
-    return
-    model = MaskDINO(cfg)
+    model = DINOModel(cfg)
     print('\n========== model ==========\n', model)
 
 
