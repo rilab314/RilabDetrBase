@@ -128,12 +128,12 @@ class DINODecoder(nn.Module):
         outputs_coord_list = torch.stack(outputs_coord_list)
         return outputs_coord_list
 
-    def forward(self, ms_features, target, refpoint_unsigmoid, masks):
+    def forward(self, ms_features, query, refpoint_unsigmoid, masks):
         """
         :param ms_features: input, a list of multi-scale feature
             encoder에서 출력하는 multi_scale_features (5 levels) [[1, 256, 200, 304],..., [1, 256, 13, 19]]
-        :param target: query features,[bs, nq, d_model]  It could be from encoder or learnable embedding
-        :param refpoint_unsigmoid:  unsigmoided points or boxes [bs, nq, 2 or 4]
+        :param query: query features,[bs, nq, d_model]  It could be from encoder or learnable embedding
+        :param refpoint_unsigmoid: unsigmoided points or boxes of query [bs, nq, 2 or 4]
         :param masks: mask in the original image
         """
         assert len(ms_features) == self.num_feature_levels
@@ -168,7 +168,7 @@ class DINODecoder(nn.Module):
 
         predictions_class = []
         hs, references = self.decoder(
-            tgt=target.transpose(0, 1),  # query vectors
+            tgt=query.transpose(0, 1),  # query vectors
             memory=src_flatten.transpose(0, 1),  # key, value from encoder features
             refpoints_unsigmoid=refpoint_unsigmoid.transpose(0, 1),  # query 좌표를 unsigmoid 한 것 (cx,cy,w,h)
             memory_key_padding_mask=mask_flatten,

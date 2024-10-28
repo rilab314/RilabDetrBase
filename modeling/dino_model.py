@@ -151,8 +151,8 @@ class DINOModel(nn.Module):
         if self.training:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
             targets = self.prepare_targets(gt_instances, images)
-            outputs, mask_dict = self.head_forward(features,targets=targets)
-            losses = self.criterion(outputs, targets, mask_dict)
+            outputs = self.head_forward(features,targets=targets)
+            losses = self.criterion(outputs, targets)
             for k in list(losses.keys()):
                 if k in self.criterion.weight_dict:
                     losses[k] *= self.criterion.weight_dict[k]
@@ -161,7 +161,7 @@ class DINOModel(nn.Module):
                     losses.pop(k)
             return losses
         else:
-            outputs, _ = self.head_forward(features)
+            outputs = self.head_forward(features)
             return outputs
 
     def prepare_targets(self, targets, images):
@@ -184,10 +184,11 @@ class DINOModel(nn.Module):
             )
         return new_targets
 
-    def head_forward(self, features, mask=None,targets=None):
-        mask_features, transformer_encoder_features, multi_scale_features \
-            = self.encoder.forward_features(features, mask)
-        predictions = self.decoder(multi_scale_features, mask_features, mask, targets=targets)
+    def head_forward(self, features, targets=None):
+        multi_scale_features = self.encoder.forward_features(features)
+        query = self.encoder_head(multi_scale_features)
+        decoder_features = self.decoder(multi_scale_features, query)
+        predictions = self.decoder_head(decoder_features)
         return predictions
 
     def semantic_inference(self, mask_cls, mask_pred):
