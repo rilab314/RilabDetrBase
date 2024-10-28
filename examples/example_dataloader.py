@@ -4,7 +4,7 @@ import cv2
 import torch
 
 import settings
-from data.example_dataset import DatasetVisualizer
+from examples.example_dataset import DatasetVisualizer
 from config.setup_cfg import setup_cfg
 
 
