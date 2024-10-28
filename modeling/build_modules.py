@@ -1,7 +1,8 @@
 from detectron2.config import CfgNode as CN
 
+import settings
+from config.setup_cfg import setup_cfg
 from modeling.utils.print_util import print_structure
-from modeling.utils.setup_cfg import setup_cfg
 from modeling.backbone.swin import D2SwinTransformer
 from modeling.encoder import DINOEncoder
 from modeling.decoder import DINODecoder

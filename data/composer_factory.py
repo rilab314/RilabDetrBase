@@ -9,19 +9,25 @@ from albumentations.pytorch import ToTensorV2
 from detectron2.config import get_cfg, CfgNode
 
 
-def composer_factory(cfg):
+def composer_factory(cfg, split: str):
     """
-    cfg.AUGMENTATION에 정의된 설정을 기반으로 albumentations.Compose 객체를 생성합니다.
+    cfg.DATASET.AUGMENTATION에 정의된 설정을 기반으로 albumentations.Compose 객체를 생성합니다.
     """
-    if cfg.DATASET.AUGMENT:
+    split = split.upper()
+    if cfg.DATASET[split].AUGMENTATION:
         augmentations = create_augmentations(cfg)
     else:
         augmentations = []
 
-    # Normalize와 ToTensorV2를 추가합니다.
+    augmentations.append(A.Resize(
+        height=cfg.DATASET.IMAGE_HEIGHT,
+        width=cfg.DATASET.IMAGE_WIDTH,
+        interpolation=cv2.INTER_LINEAR,
+        p=1.0
+    ))
     augmentations.append(A.Normalize(
-        mean=cfg.INPUT.PIXEL_MEAN,
-        std=cfg.INPUT.PIXEL_STD,
+        mean=cfg.MODEL.PIXEL_MEAN,
+        std=cfg.MODEL.PIXEL_STD,
         max_pixel_value=255.0
     ))
     augmentations.append(ToTensorV2())
@@ -35,31 +41,31 @@ def composer_factory(cfg):
 
 
 def create_augmentations(cfg):
+    aug_cfg = cfg.DATASET.AUGMENTATION
     augmentations = []
-    if 'HorizontalFlip' in cfg.AUGMENTATION:
-        params = cfg.AUGMENTATION.HorizontalFlip
+    if 'HorizontalFlip' in aug_cfg:
+        params = aug_cfg.HorizontalFlip
         augmentations.append(A.HorizontalFlip(p=params.get('p', 0.5)))
 
-    if 'RandomResizedCrop' in cfg.AUGMENTATION:
-        params = cfg.AUGMENTATION.RandomResizedCrop
+    if 'RandomResizedCrop' in aug_cfg:
+        params = aug_cfg.RandomResizedCrop
         augmentations.append(A.RandomResizedCrop(
-            height=params['height'],
-            width=params['width'],
-            scale=params.get('scale', (0.08, 1.0)),
-            ratio=params.get('ratio', (0.75, 1.3333333333333333)),
+            size=params.get('size', (384, 384)),
+            scale=params.get('scale', (0.5, 1.0)),
+            ratio=params.get('ratio', (0.75, 1.333)),
             p=params.get('p', 1.0)
         ))
 
-    if 'RandomBrightnessContrast' in cfg.AUGMENTATION:
-        params = cfg.AUGMENTATION.RandomBrightnessContrast
+    if 'RandomBrightnessContrast' in aug_cfg:
+        params = aug_cfg.RandomBrightnessContrast
         augmentations.append(A.RandomBrightnessContrast(
             brightness_limit=params.get('brightness_limit', 0.2),
             contrast_limit=params.get('contrast_limit', 0.2),
             p=params.get('p', 0.5)
         ))
 
-    if 'HueSaturationValue' in cfg.AUGMENTATION:
-        params = cfg.AUGMENTATION.HueSaturationValue
+    if 'HueSaturationValue' in aug_cfg:
+        params = aug_cfg.HueSaturationValue
         augmentations.append(A.HueSaturationValue(
             hue_shift_limit=params.get('hue_shift_limit', 20),
             sat_shift_limit=params.get('sat_shift_limit', 30),
@@ -67,15 +73,15 @@ def create_augmentations(cfg):
             p=params.get('p', 0.5)
         ))
 
-    if 'RandomGamma' in cfg.AUGMENTATION:
-        params = cfg.AUGMENTATION.RandomGamma
+    if 'RandomGamma' in aug_cfg:
+        params = aug_cfg.RandomGamma
         augmentations.append(A.RandomGamma(
             gamma_limit=params.get('gamma_limit', (80, 120)),
             p=params.get('p', 0.5)
         ))
 
-    if 'GaussNoise' in cfg.AUGMENTATION:
-        params = cfg.AUGMENTATION.GaussNoise
+    if 'GaussNoise' in aug_cfg:
+        params = aug_cfg.GaussNoise
         augmentations.append(A.GaussNoise(
             var_limit=params.get('var_limit', (10.0, 50.0)),
             mean=params.get('mean', 0),

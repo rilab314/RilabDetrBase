@@ -9,7 +9,7 @@ from data.composer_factory import composer_factory
 
 
 class CustomDetectionDataset(Dataset):
-    def __init__(self, cfg):
+    def __init__(self, cfg, split: str):
         """
         Args:
             cfg.ROOT_PATH: 데이터셋의 루트 경로
@@ -18,56 +18,50 @@ class CustomDetectionDataset(Dataset):
             cfg.INPUT.PIXEL_MEAN: 이미지 정규화에 사용되는 평균 값
             cfg.INPUT.PIXEL_STD: 이미지 정규화에 사용되는 표준편차 값
         """
-        self.root_path = cfg.ROOT_PATH
-        self.split = cfg.SPLIT
+        split = split.upper()
+        self.root_path = cfg.DATASET.ROOT_PATH
+        self.split = cfg.DATASET[split].SPLIT
         self.image_dir = str(os.path.join(self.root_path, self.split, 'images'))
         self.label_dir = str(os.path.join(self.root_path, self.split, 'labels'))
         self.image_files = sorted(os.listdir(self.image_dir))
         self.image_files = [file for file in self.image_files if file.endswith('.jpg')]
-        self.augment = composer_factory(cfg)
+        self.augment = composer_factory(cfg, split)
         self.cfg = cfg  # cfg 객체를 저장하여 다른 메서드에서 사용
 
     def __len__(self):
         return len(self.image_files)
 
     def __getitem__(self, idx):
-        image, original_height, original_width = self.load_image(idx)
+        image = self.load_image(idx)
         bboxes, category_ids = self.load_labels(idx)
-
         # 데이터 증강 적용
         image, bboxes, category_ids = self.apply_augmentation(
             image, bboxes, category_ids
         )
-
         # 바운딩 박스와 레이블을 Detectron2의 Instances 객체로 변환
-        instances = self.create_instances(
-            bboxes, category_ids, image.shape[1:], original_height, original_width
-        )
-
+        image_shape = self.cfg.DATASET.IMAGE_HEIGHT, self.cfg.DATASET.IMAGE_WIDTH
+        instances = self.create_instances(bboxes, category_ids, image_shape)
         # 최종 데이터 반환
         return {
             'image': image,
             'instances': instances,
-            'height': original_height,
-            'width': original_width,
-            'file_name': os.path.join(self.image_dir, self.image_files[idx]),
+            'height': image.shape[1],
+            'width': image.shape[2],
+            'filename': os.path.join(self.image_dir, self.image_files[idx]),
         }
 
     def load_image(self, idx):
         """
         Returns:
             image (numpy.ndarray): 로드된 이미지 (RGB)
-            height (int): 원본 이미지의 높이
-            width (int): 원본 이미지의 너비
         """
         image_filename = self.image_files[idx]
         image_path = os.path.join(self.image_dir, image_filename)
         image = cv2.imread(image_path)
         if image is None:
             raise FileNotFoundError(f"Image not found: {image_path}")
-        height, width = image.shape[:2]
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        return image, height, width
+        return image
 
     def load_labels(self, idx):
         """
