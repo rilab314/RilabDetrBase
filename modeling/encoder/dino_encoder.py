@@ -65,13 +65,12 @@ class MSDeformAttnTransformerEncoderOnly(nn.Module):
         return valid_ratio
 
     def forward(self, srcs, masks, pos_embeds):
-
-        enable_mask=0
+        enable_mask = 0
         if masks is not None:
             for src in srcs:
                 if src.size(2)%32 or src.size(3)%32:
                     enable_mask = 1
-        if enable_mask==0:
+        if enable_mask == 0:
             masks = [torch.zeros((x.size(0), x.size(2), x.size(3)), device=x.device, dtype=torch.bool) for x in srcs]
         # prepare input for encoder
         src_flatten = []

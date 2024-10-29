@@ -1,3 +1,38 @@
+DATASET:
+  NAME: 'CustomDetectionDataset'
+  ROOT_PATH: '/home/dolphin/choi_ws/SatLaneDet_2024/dataset/soccer-players'
+  IMAGE_HEIGHT: 384
+  IMAGE_WIDTH: 384
+  TRAIN:
+    SPLIT: 'train'
+    AUGMENTATION: True
+  VAL:
+    SPLIT: 'val'
+    AUGMENTATION: False
+  TEST:
+    SPLIT: 'test'
+    AUGMENTATION: False
+  AUGMENTATION:
+    HorizontalFlip:
+      p: 0.5
+    RandomResizedCrop:
+      size: [384, 384]
+      scale: [0.5, 1.0]
+      ratio: [0.75, 1.333]
+      p: 0.5
+    RandomBrightnessContrast:
+      brightness_limit: 0.2
+      contrast_limit: 0.2
+      p: 0.5
+    HueSaturationValue:
+      hue_shift_limit: 20
+      sat_shift_limit: 30
+      val_shift_limit: 20
+      p: 0.5
+    RandomGamma:
+      gamma_limit: [80, 120]
+      gamma_by_channels: True
+
 MODEL:
   PIXEL_MEAN: [ 123.675, 116.280, 103.530 ]
   PIXEL_STD: [ 58.395, 57.120, 57.375 ]

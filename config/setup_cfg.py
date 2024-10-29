@@ -18,7 +18,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description='maskdino demo for builtin configs')
     parser.add_argument(
         '--config-file',
-        default='/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/modeling/configs/dino_model.yaml',
+        default='/home/dolphin/choi_ws/SatLaneDet_2024/SatelliteLaneDet2024/config/dino_model.yaml',
         metavar='FILE',
         help='path to config file',
     )
@@ -26,12 +26,11 @@ def get_parser():
 
 
 def load_cfg_from_yaml(yaml_file):
-    print('filename', yaml_file)
+    print('load_cfg_from_yaml:', yaml_file)
     with open(yaml_file, 'r') as f:
         yaml_cfg = yaml.safe_load(f)
 
     cfg = get_cfg()
-    print('===== empty config =====\n', cfg)
     cfg = create_cfg_node(cfg, yaml_cfg)
     return cfg
 
