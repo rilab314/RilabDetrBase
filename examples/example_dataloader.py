@@ -6,28 +6,13 @@ import torch
 import settings
 from examples.example_dataset import DatasetVisualizer
 from config.setup_cfg import setup_cfg
-
-
-def custom_collate_fn(batch):
-    result = {}
-    for key in batch[0].keys():
-        if key == 'instances':
-            result[key] = [item[key] for item in batch] 
-        else:
-            result[key] = torch.utils.data._utils.collate.default_collate([item[key] for item in batch])
-    return result
+from data.loader_factory import loader_factory
 
 
 class DataLoaderVisualizer(DatasetVisualizer):
-    def __init__(self, cfg, split: str, batch_size: int = 4):
+    def __init__(self, cfg, split: str):
         super().__init__(cfg, split)
-        self.dataloader = DataLoader(
-            self.dataset, 
-            batch_size=batch_size,
-            shuffle=(split.lower() == 'train'),
-            num_workers=2,
-            collate_fn=custom_collate_fn
-        )
+        self.dataloader = loader_factory(cfg, split)
     
     def display_dataset_frames(self):
         for batch_idx, batch_data in enumerate(self.dataloader):
@@ -54,10 +39,9 @@ class DataLoaderVisualizer(DatasetVisualizer):
 
 def visualize_detection_batch():
     cfg = setup_cfg()
-    visualizer = DataLoaderVisualizer(cfg, 'test', batch_size=4)
+    visualizer = DataLoaderVisualizer(cfg, 'test')
     visualizer.display_dataset_frames()
 
 
 if __name__ == "__main__":
     visualize_detection_batch()
-

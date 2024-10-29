@@ -6,12 +6,15 @@ DATASET:
   TRAIN:
     SPLIT: 'train'
     AUGMENTATION: True
+    BATCH_SIZE: 4
   VAL:
     SPLIT: 'val'
     AUGMENTATION: False
+    BATCH_SIZE: 4
   TEST:
     SPLIT: 'test'
     AUGMENTATION: False
+    BATCH_SIZE: 4
   AUGMENTATION:
     HorizontalFlip:
       p: 0.5
