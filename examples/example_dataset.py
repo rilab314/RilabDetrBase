@@ -10,8 +10,6 @@ from config.setup_cfg import setup_cfg
 class DatasetVisualizer:
     def __init__(self, cfg, split: str):
         self.dataset = CustomDetectionDataset(cfg, split)
-        self.pixel_mean = cfg.MODEL.PIXEL_MEAN
-        self.pixel_std = cfg.MODEL.PIXEL_STD
     
     def display_dataset_frames(self):
         total_frames = len(self.dataset)
@@ -47,7 +45,7 @@ class DatasetVisualizer:
     def _to_numpy_image(self, image_tensor):
         image = image_tensor.detach().cpu().numpy()
         image = np.transpose(image, (1, 2, 0))
-        image = ((image * self.pixel_std) + self.pixel_mean) * 255.
+        # image = ((image * self.pixel_std) + self.pixel_mean) * 255.
         image = np.clip(image, 0, 255).astype(np.uint8)
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
         return image

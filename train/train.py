@@ -24,7 +24,7 @@ from detectron2.projects.deeplab import add_deeplab_config
 from detectron2.utils.logger import setup_logger
 
 from modeling.config import add_maskdino_config
-
+from detectron2.engine import DefaultTrainer
 
 def create_modules():
     args = get_parser()

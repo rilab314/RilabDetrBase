@@ -25,11 +25,6 @@ def composer_factory(cfg, split: str):
         interpolation=cv2.INTER_LINEAR,
         p=1.0
     ))
-    augmentations.append(A.Normalize(
-        mean=cfg.MODEL.PIXEL_MEAN,
-        std=cfg.MODEL.PIXEL_STD,
-        max_pixel_value=255.0
-    ))
     augmentations.append(ToTensorV2())
 
     bbox_params = A.BboxParams(

@@ -118,78 +118,62 @@ class DINOModel(nn.Module):
     def forward(self, batched_inputs):
         """
         Args:
-            batched_inputs: a list, batched outputs of :class:`DatasetMapper`.
-                Each item in the list contains the inputs for one image.
-                For now, each item in the list is a dict that contains:
+            batched_inputs: a list of dicts that contains:
                    * "image": Tensor, image in (C, H, W) format.
                    * "instances": per-region ground truth
-                   * Other information that's included in the original dicts, such as:
-                     "height", "width" (int): the output resolution of the model (may be different
-                     from input resolution), used in inference.
+                   * "height": int, the output resolution of the model
+                   * "width": int, the output resolution of the model
+                   * "filename": str, the filename of the image
         Returns:
-            list[dict]:
-                each dict has the results for one image. The dict contains the following keys:
-
-                * "sem_seg":
-                    A Tensor that represents the
-                    per-pixel segmentation prediced by the head.
-                    The prediction has shape KxHxW that represents the logits of
-                    each class for each pixel.
-                * "panoptic_seg":
-                    A tuple that represent panoptic output
-                    panoptic_seg (Tensor): of shape (height, width) where the values are ids for each segment.
-                    segments_info (list[dict]): Describe each segment in `panoptic_seg`.
-                        Each dict contains keys "id", "category_id", "isthing".
         """
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, self.size_divisibility)
 
-        features = self.backbone(images.tensor)
-        print_structure(features, 'backbone')
+        bkbn_ms_features = self.backbone(images.tensor)
+        encd_ms_features = self.encoder.forward_features(bkbn_ms_features)
+        print_structure(bkbn_ms_features, 'backbone')
+        print_structure(encd_ms_features, 'encoder')
 
         if self.training:
             gt_instances = [x["instances"].to(self.device) for x in batched_inputs]
             targets = self.prepare_targets(gt_instances, images)
-            outputs = self.head_forward(features,targets=targets)
-            losses = self.criterion(outputs, targets)
-            for k in list(losses.keys()):
-                if k in self.criterion.weight_dict:
-                    losses[k] *= self.criterion.weight_dict[k]
-                else:
-                    # remove this loss if not specified in `weight_dict`
-                    losses.pop(k)
+            losses = self.head_forward(encd_ms_features, targets)
+            if self.dn:
+                losses_dn = self.head_forward(encd_ms_features, targets, dn=True)
+                losses.update(losses_dn)
             return losses
         else:
-            outputs = self.head_forward(features)
+            outputs = self.head_forward(encd_ms_features)
             return outputs
 
     def prepare_targets(self, targets, images):
         h_pad, w_pad = images.tensor.shape[-2:]
         new_targets = []
         for targets_per_image in targets:
-            # pad gt
             h, w = targets_per_image.image_size
             image_size_xyxy = torch.as_tensor([w, h, w, h], dtype=torch.float, device=self.device)
-
-            gt_masks = targets_per_image.gt_masks
-            padded_masks = torch.zeros((gt_masks.shape[0], h_pad, w_pad), dtype=gt_masks.dtype, device=gt_masks.device)
-            padded_masks[:, : gt_masks.shape[1], : gt_masks.shape[2]] = gt_masks
+            # gt_masks = targets_per_image.gt_masks
+            # padded_masks = torch.zeros((gt_masks.shape[0], h_pad, w_pad), dtype=gt_masks.dtype, device=gt_masks.device)
+            # padded_masks[:, : gt_masks.shape[1], : gt_masks.shape[2]] = gt_masks
             new_targets.append(
                 {
                     "labels": targets_per_image.gt_classes,
-                    "masks": padded_masks,
-                    "boxes":box_ops.box_xyxy_to_cxcywh(targets_per_image.gt_boxes.tensor)/image_size_xyxy
+                    "boxes": box_ops.box_xyxy_to_cxcywh(targets_per_image.gt_boxes.tensor)/image_size_xyxy
+                    # "masks": padded_masks,
                 }
             )
         return new_targets
 
-    def head_forward(self, features, targets=None):
-        multi_scale_features = self.encoder.forward_features(features)
-        query = self.encoder_head(multi_scale_features)
-        decoder_features = self.decoder(multi_scale_features, query)
+    def head_forward(self, ms_features, targets, dn=False):
+        if dn:
+            query_features, refpoint_unsigmoid, targets = self.prepare_dn(ms_features, targets)
+        else:
+            query_features, refpoint_unsigmoid = self.encoder_head(ms_features)
+        decoder_features = self.decoder(ms_features, query_features, refpoint_unsigmoid)
         predictions = self.decoder_head(decoder_features)
-        return predictions
+        losses = self.criterion(predictions, targets, dn=dn)
+        return losses
 
     def semantic_inference(self, mask_cls, mask_pred):
         # if use cross-entropy loss in training, evaluate with softmax

@@ -124,9 +124,11 @@ class CustomDetectionDataset(Dataset):
             boxes = torch.tensor(boxes, dtype=torch.float32)
             target.gt_boxes = Boxes(boxes)
             target.gt_classes = torch.tensor(category_ids, dtype=torch.int64)
+            # target.gt_masks = torch.zeros((len(bboxes), image_height, image_width), dtype=torch.uint8)
         else:
             # 바운딩 박스가 없을 경우 빈 텐서를 설정
             target.gt_boxes = Boxes(torch.zeros((0, 4), dtype=torch.float32))
             target.gt_classes = torch.tensor([], dtype=torch.int64)
+            # target.gt_masks = torch.zeros((len(bboxes), image_height, image_width), dtype=torch.uint8)
 
         return target

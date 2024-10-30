@@ -108,46 +108,17 @@ class DINODecoder(nn.Module):
         ret["total_num_feature_levels"] = cfg.MODEL.DECODER.TOTAL_NUM_FEATURE_LEVELS
         return ret
 
-    def pred_box(self, reference, hs, ref0=None):
-        """
-        :param reference: reference box coordinates from each decoder layer
-        :param hs: content
-        :param ref0: whether there are prediction from the first layer
-        """
-        device = reference[0].device
-
-        if ref0 is None:
-            outputs_coord_list = []
-        else:
-            outputs_coord_list = [ref0.to(device)]
-        for dec_lid, (layer_ref_sig, layer_bbox_embed, layer_hs) in enumerate(zip(reference[:-1], self.bbox_embed, hs)):
-            layer_delta_unsig = layer_bbox_embed(layer_hs).to(device)
-            layer_outputs_unsig = layer_delta_unsig + inverse_sigmoid(layer_ref_sig).to(device)
-            layer_outputs_unsig = layer_outputs_unsig.sigmoid()
-            outputs_coord_list.append(layer_outputs_unsig)
-        outputs_coord_list = torch.stack(outputs_coord_list)
-        return outputs_coord_list
-
-    def forward(self, ms_features, query, refpoint_unsigmoid, masks):
+    def forward(self, ms_features, query, refpoint_unsigmoid):
         """
         :param ms_features: input, a list of multi-scale feature
             encoder에서 출력하는 multi_scale_features (5 levels) [[1, 256, 200, 304],..., [1, 256, 13, 19]]
         :param query: query features,[bs, nq, d_model]  It could be from encoder or learnable embedding
         :param refpoint_unsigmoid: unsigmoided points or boxes of query [bs, nq, 2 or 4]
-        :param masks: mask in the original image
         """
         assert len(ms_features) == self.num_feature_levels
-        size_list = []
-        # disable mask, it does not affect performance
-        enable_mask = 0
-        if masks is not None:
-            for src in ms_features:
-                if src.size(2) % 32 or src.size(3) % 32:
-                    enable_mask = 1
-        if enable_mask == 0:
-            masks = [torch.zeros((src.size(0), src.size(2), src.size(3)), device=src.device, dtype=torch.bool) for src in ms_features]
-
+        masks = [torch.zeros((src.size(0), src.size(2), src.size(3)), device=src.device, dtype=torch.bool) for src in ms_features]
         # feature map flatten 해서 하나로 합치고, level_start_index 만들기
+        size_list = []
         src_flatten = []
         mask_flatten = []
         spatial_shapes = []
@@ -191,3 +162,23 @@ class DINODecoder(nn.Module):
                'pred_feat': hs[-1]
               }
         return out
+
+    def pred_box(self, reference, hs, ref0=None):
+        """
+        :param reference: reference box coordinates from each decoder layer
+        :param hs: content
+        :param ref0: whether there are prediction from the first layer
+        """
+        device = reference[0].device
+
+        if ref0 is None:
+            outputs_coord_list = []
+        else:
+            outputs_coord_list = [ref0.to(device)]
+        for dec_lid, (layer_ref_sig, layer_bbox_embed, layer_hs) in enumerate(zip(reference[:-1], self.bbox_embed, hs)):
+            layer_delta_unsig = layer_bbox_embed(layer_hs).to(device)
+            layer_outputs_unsig = layer_delta_unsig + inverse_sigmoid(layer_ref_sig).to(device)
+            layer_outputs_unsig = layer_outputs_unsig.sigmoid()
+            outputs_coord_list.append(layer_outputs_unsig)
+        outputs_coord_list = torch.stack(outputs_coord_list)
+        return outputs_coord_list
