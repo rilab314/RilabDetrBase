@@ -14,11 +14,13 @@ from torch.nn import functional as F
 
 from modeling.backbone.swin import D2SwinTransformer
 from modeling.encoder import DINOEncoder
+from modeling.encoder.encoder_head import EncoderHead
 from modeling.decoder import DINODecoder
 from modeling.criterion import SetCriterion
 from modeling.matcher import HungarianMatcher
 from modeling.utils import box_ops
-
+from modeling.utils.utils import MLP, inverse_sigmoid
+from modeling.utils.shared_resources import get_bbox_embed
 from modeling.utils.print_util import print_structure
 
 
@@ -75,7 +77,10 @@ class DINOModel(nn.Module):
     def from_config(cls, cfg):
         backbone = D2SwinTransformer(cfg)
         encoder = DINOEncoder(cfg, backbone.output_shape())
+        bbox_embed = get_bbox_embed(cfg.MODEL.DECODER.HIDDEN_DIM, cfg.MODEL.DECODER.HIDDEN_DIM)
+        encd_head = EncoderHead(cfg)
         decoder = DINODecoder(cfg)
+        decd_head = DecoderHead(cfg)
         matcher = HungarianMatcher(
             cost_types=cfg.MODEL.MATCHER.COST_TYPES,
             cost_class=cfg.MODEL.MATCHER.COST_CLASS,
