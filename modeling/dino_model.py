@@ -16,6 +16,7 @@ from modeling.backbone.swin import D2SwinTransformer
 from modeling.encoder import DINOEncoder
 from modeling.encoder.encoder_head import EncoderHead
 from modeling.decoder import DINODecoder
+from modeling.decoder.decoder_head import DecoderHead
 from modeling.criterion import SetCriterion
 from modeling.matcher import HungarianMatcher
 from modeling.utils import box_ops
@@ -34,7 +35,9 @@ class DINOModel(nn.Module):
         *,
         backbone: Backbone,
         encoder: nn.Module,
+        encoder_head: nn.Module,
         decoder: nn.Module,
+        decoder_head: nn.Module,
         criterion: nn.Module,
         num_queries: int,
         object_mask_threshold: float,
@@ -60,7 +63,9 @@ class DINOModel(nn.Module):
         super().__init__()
         self.backbone = backbone
         self.encoder = encoder
+        self.encoder_head = encoder_head
         self.decoder = decoder
+        self.decoder_head = decoder_head
         self.criterion = criterion
         self.num_queries = num_queries
         self.overlap_threshold = overlap_threshold
@@ -77,10 +82,11 @@ class DINOModel(nn.Module):
     def from_config(cls, cfg):
         backbone = D2SwinTransformer(cfg)
         encoder = DINOEncoder(cfg, backbone.output_shape())
-        bbox_embed = get_bbox_embed(cfg.MODEL.DECODER.HIDDEN_DIM, cfg.MODEL.DECODER.HIDDEN_DIM)
-        encd_head = EncoderHead(cfg)
+        # 박스 예측을 위한 공용 레이어 미리 생성
+        _ = get_bbox_embed(cfg.MODEL.DECODER.HIDDEN_DIM)
+        encoder_head = EncoderHead(cfg.MODEL.ENCODER.HIDDEN_DIM, cfg.MODEL.DECODER.NUM_CLASSES)
         decoder = DINODecoder(cfg)
-        decd_head = DecoderHead(cfg)
+        decoder_head = DecoderHead(cfg)
         matcher = HungarianMatcher(
             cost_types=cfg.MODEL.MATCHER.COST_TYPES,
             cost_class=cfg.MODEL.MATCHER.COST_CLASS,
@@ -106,7 +112,9 @@ class DINOModel(nn.Module):
         return {
             "backbone": backbone,
             "encoder": encoder,
+            "encoder_head": encoder_head,
             "decoder": decoder,
+            "decoder_head": decoder_head,
             "criterion": criterion,
             "num_queries": cfg.MODEL.DECODER.NUM_OBJECT_QUERIES,
             "object_mask_threshold": cfg.MODEL.TEST.OBJECT_MASK_THRESHOLD,
@@ -175,8 +183,8 @@ class DINOModel(nn.Module):
             query_features, refpoint_unsigmoid, targets = self.prepare_dn(ms_features, targets)
         else:
             query_features, refpoint_unsigmoid = self.encoder_head(ms_features)
-        decoder_features = self.decoder(ms_features, query_features, refpoint_unsigmoid)
-        predictions = self.decoder_head(decoder_features)
+        decoder_features, references = self.decoder(ms_features, query_features, refpoint_unsigmoid)
+        predictions = self.decoder_head(decoder_features, references)
         losses = self.criterion(predictions, targets, dn=dn)
         return losses
 

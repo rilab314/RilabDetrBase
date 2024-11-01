@@ -14,6 +14,7 @@ from detectron2.layers import Conv2d
 
 from .decoder_layer import TransformerDecoder, DeformableTransformerDecoderLayer
 from modeling.utils.utils import MLP, inverse_sigmoid
+from modeling.utils.shared_resources import get_bbox_embed
 
 
 class DINODecoder(nn.Module):
@@ -85,10 +86,7 @@ class DINODecoder(nn.Module):
                                           dec_layer_share=dec_layer_share,
                                           )
 
-        self.hidden_dim = hidden_dim
-        _bbox_embed = MLP(hidden_dim, hidden_dim, 4, 3)
-        nn.init.constant_(_bbox_embed.layers[-1].weight.data, 0)
-        nn.init.constant_(_bbox_embed.layers[-1].bias.data, 0)
+        _bbox_embed = get_bbox_embed()
         box_embed_layerlist = [_bbox_embed for i in range(self.num_layers)]  # share box prediction each layer
         self.bbox_embed = nn.ModuleList(box_embed_layerlist)
         self.decoder.bbox_embed = self.bbox_embed
@@ -134,8 +132,7 @@ class DINODecoder(nn.Module):
         mask_flatten = torch.cat(mask_flatten, 1)  # bs, \sum{hxw}
         spatial_shapes = torch.as_tensor(spatial_shapes, dtype=torch.long, device=src_flatten.device)
         level_start_index = torch.cat((spatial_shapes.new_zeros((1,)), spatial_shapes.prod(1).cumsum(0)[:-1]))
-
-        # 원래 이 사이에 target과 refpoints_unsigmoid를 만들기 위한 많은 코드가 있었음
+        # 원래 이 사이에 target과 refpoints_unsigmoid를 만들기 위한 많은 코드가 있었음 -> EncoderHead에서 처리
 
         predictions_class = []
         hs, references = self.decoder(
@@ -147,38 +144,5 @@ class DINODecoder(nn.Module):
             spatial_shapes=spatial_shapes,  # memory에 들어있는 feature shapes
         )                      # MultiheadAttention.forward() 참조
         # hs: output features of decoder layers
-        # references: output points of decoder layers (refined points from query)
-
-        for i, output in enumerate(hs):
-            # decoder_norm: LayerNorm
-            outputs_class = self.decoder_norm(output.transpose(0, 1))
-            outputs_class = outputs_class.transpose(0, 1)
-            predictions_class.append(outputs_class)
-        out_boxes = self.pred_box(references, hs)
-
-        # 최종 출력은 마지막 레이어의 출력만 내보낸다.
-        out = {'pred_logit': predictions_class[-1],
-               'pred_box': out_boxes[-1],
-               'pred_feat': hs[-1]
-              }
-        return out
-
-    def pred_box(self, reference, hs, ref0=None):
-        """
-        :param reference: reference box coordinates from each decoder layer
-        :param hs: content
-        :param ref0: whether there are prediction from the first layer
-        """
-        device = reference[0].device
-
-        if ref0 is None:
-            outputs_coord_list = []
-        else:
-            outputs_coord_list = [ref0.to(device)]
-        for dec_lid, (layer_ref_sig, layer_bbox_embed, layer_hs) in enumerate(zip(reference[:-1], self.bbox_embed, hs)):
-            layer_delta_unsig = layer_bbox_embed(layer_hs).to(device)
-            layer_outputs_unsig = layer_delta_unsig + inverse_sigmoid(layer_ref_sig).to(device)
-            layer_outputs_unsig = layer_outputs_unsig.sigmoid()
-            outputs_coord_list.append(layer_outputs_unsig)
-        outputs_coord_list = torch.stack(outputs_coord_list)
-        return outputs_coord_list
+        # references: output points of decoder layers, refined points from query
+        return hs, references
