@@ -8,11 +8,13 @@ from modeling.encoder import DINOEncoder
 from modeling.decoder import DINODecoder
 from modeling.matcher import HungarianMatcher
 from modeling.criterion import SetCriterion
-from modeling.dino_model import DINOModel
+from modeling.dino_model import DinoModel
+from modeling.utils.shared_resources import get_bbox_embed
 
 
 def create_modules():
     cfg = setup_cfg()
+    _ = get_bbox_embed(cfg.MODEL.DECODER.HIDDEN_DIM)
     print('\n========== config ==========\n', cfg)
     backbone = D2SwinTransformer(cfg)
     print('\n========== backbone ==========\n', backbone)
@@ -24,7 +26,7 @@ def create_modules():
     print('\n========== matcher ==========\n', matcher)
     criterion = create_criterion(cfg, matcher)
     print('\n========== criterion ==========\n', criterion)
-    model = DINOModel(cfg)
+    model = DinoModel(cfg)
     print('\n========== model ==========\n', model)
 
 

@@ -56,49 +56,49 @@ class DeformableTransformerDecoderLayer(nn.Module):
         return tgt
 
 
-@autocast(enabled=False)
-def forward(self,
-            # for tgt
-            tgt: Optional[Tensor],  # nq, bs, d_model
-            tgt_query_pos: Optional[Tensor] = None,  # pos for query. MLP(Sine(pos))
-            tgt_reference_points: Optional[Tensor] = None,  # nq, bs, 4
-            # for memory
-            memory: Optional[Tensor] = None,  # hw, bs, d_model
-            memory_level_start_index: Optional[Tensor] = None,  # num_levels
-            memory_spatial_shapes: Optional[Tensor] = None,  # bs, num_levels, 2
-            memory_key_padding_mask: Optional[Tensor] = None,  # None으로 놔둬도 될듯
-            # sa
-            self_attn_mask: Optional[Tensor] = None,  # mask used for self-attention
-            ):
-    """
-    Input:
-        - tgt/tgt_query_pos: nq, bs, d_model
-        -
-    """
-    # self attention
-    if self.self_attn is not None:
-        q = k = self.with_pos_embed(tgt, tgt_query_pos)
-        tgt2 = self.self_attn(q, k, tgt, attn_mask=self_attn_mask)[0]
-        tgt = tgt + self.dropout2(tgt2)
-        tgt = self.norm2(tgt)
+    @autocast(enabled=False)
+    def forward(self,
+                # for tgt
+                tgt: Optional[Tensor],  # nq, bs, d_model
+                tgt_query_pos: Optional[Tensor] = None,  # pos for query. MLP(Sine(pos))
+                tgt_reference_points: Optional[Tensor] = None,  # nq, bs, 4
+                # for memory
+                memory: Optional[Tensor] = None,  # hw, bs, d_model
+                memory_level_start_index: Optional[Tensor] = None,  # num_levels
+                memory_spatial_shapes: Optional[Tensor] = None,  # bs, num_levels, 2
+                memory_key_padding_mask: Optional[Tensor] = None,  # None으로 놔둬도 될듯
+                # sa
+                self_attn_mask: Optional[Tensor] = None,  # mask used for self-attention
+                ):
+        """
+        Input:
+            - tgt/tgt_query_pos: nq, bs, d_model
+            -
+        """
+        # self attention
+        if self.self_attn is not None:
+            q = k = self.with_pos_embed(tgt, tgt_query_pos)
+            tgt2 = self.self_attn(q, k, tgt, attn_mask=self_attn_mask)[0]
+            tgt = tgt + self.dropout2(tgt2)
+            tgt = self.norm2(tgt)
 
-    # cross attention
-    if self.key_aware_type is not None:
-        if self.key_aware_type == 'mean':
-            tgt = tgt + memory.mean(0, keepdim=True)
-        elif self.key_aware_type == 'proj_mean':
-            tgt = tgt + self.key_aware_proj(memory).mean(0, keepdim=True)
-        else:
-            raise NotImplementedError("Unknown key_aware_type: {}".format(self.key_aware_type))
-    tgt2 = self.cross_attn(self.with_pos_embed(tgt, tgt_query_pos).transpose(0, 1),
-                           tgt_reference_points.transpose(0, 1).contiguous(),
-                           memory.transpose(0, 1), memory_spatial_shapes, memory_level_start_index,
-                           memory_key_padding_mask).transpose(0, 1)
-    tgt = tgt + self.dropout1(tgt2)
-    tgt = self.norm1(tgt)
-    # ffn
-    tgt = self.forward_ffn(tgt)
-    return tgt
+        # cross attention
+        if self.key_aware_type is not None:
+            if self.key_aware_type == 'mean':
+                tgt = tgt + memory.mean(0, keepdim=True)
+            elif self.key_aware_type == 'proj_mean':
+                tgt = tgt + self.key_aware_proj(memory).mean(0, keepdim=True)
+            else:
+                raise NotImplementedError("Unknown key_aware_type: {}".format(self.key_aware_type))
+        tgt2 = self.cross_attn(self.with_pos_embed(tgt, tgt_query_pos).transpose(0, 1),
+                            tgt_reference_points.transpose(0, 1).contiguous(),
+                            memory.transpose(0, 1), memory_spatial_shapes, memory_level_start_index,
+                            memory_key_padding_mask).transpose(0, 1)
+        tgt = tgt + self.dropout1(tgt2)
+        tgt = self.norm1(tgt)
+        # ffn
+        tgt = self.forward_ffn(tgt)
+        return tgt
 
 
 class TransformerDecoder(nn.Module):
@@ -148,17 +148,18 @@ class TransformerDecoder(nn.Module):
         intermediate = []
         reference_points = refpoints_unsigmoid.sigmoid().to(device)
         ref_points = [reference_points]
+        reference_points_input = reference_points[:, :, None, :]
+        reference_points_input = reference_points_input.repeat(1, 1, spatial_shapes.shape[1], 1)
+        query_sine_embed = gen_sineembed_for_position(reference_points_input[:, :, 0]) # nq, bs, 256*2
+        raw_query_pos = self.ref_point_head(query_sine_embed)  # nq, bs, 256
+        pos_scale = 1  # self.query_scale(output) if self.query_scale is not None else 1
+        query_pos = pos_scale * raw_query_pos
 
         for layer_id, layer in enumerate(self.layers):
-            query_sine_embed = gen_sineembed_for_position(reference_points) # nq, bs, 256*2
-            raw_query_pos = self.ref_point_head(query_sine_embed)  # nq, bs, 256
-            pos_scale = 1  # self.query_scale(output) if self.query_scale is not None else 1
-            query_pos = pos_scale * raw_query_pos
-
             output = layer(
                 tgt=output,
                 tgt_query_pos=query_pos,
-                tgt_reference_points=reference_points,
+                tgt_reference_points=reference_points_input,
                 memory=memory,
                 memory_key_padding_mask=memory_key_padding_mask,
                 memory_level_start_index=level_start_index,

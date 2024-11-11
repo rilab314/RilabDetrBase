@@ -333,7 +333,7 @@ class DINOEncoder(nn.Module):
         return ret
 
     @autocast(enabled=False)
-    def forward_features(self, features, masks):
+    def forward_features(self, features, masks=None):
         """
         :param features: multi-scale features from the backbone
             {'res2': torch.Tensor, shape=torch.Size([1, 192, 200, 304]),

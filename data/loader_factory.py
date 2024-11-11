@@ -1,30 +1,34 @@
-from torch.utils.data import DataLoader
-import numpy as np
-import cv2
 import torch
+from torch.utils.data import DataLoader
+from torch.utils.data.distributed import DistributedSampler
+import detectron2.utils.comm as comm
 
 from data.custom_detection_dataset import CustomDetectionDataset
-from config.setup_cfg import setup_cfg
 
 
 def custom_collate_fn(batch):
-    result = {}
-    for key in batch[0].keys():
-        if key == 'instances':
-            result[key] = [item[key] for item in batch] 
-        else:
-            result[key] = torch.utils.data._utils.collate.default_collate([item[key] for item in batch])
-    return result
+    return batch
 
 
-def loader_factory(cfg, split: str):
+def build_data_loader(cfg, split: str):
     dataset_class = eval(cfg.DATASET.NAME)
     dataset = dataset_class(cfg, split)
+    
+    # 분산 학습을 위한 sampler 설정
+    sampler = DistributedSampler(
+        dataset,
+        num_replicas=comm.get_world_size(),
+        rank=comm.get_rank(),
+        shuffle=(split.lower() == 'train')
+    ) if comm.get_world_size() > 1 else None
+    
     dataloader = DataLoader(
         dataset, 
         batch_size=cfg.DATASET[split.upper()].BATCH_SIZE,
-        shuffle=(split.lower() == 'train'),
+        shuffle=(sampler is None and split.lower() == 'train'),
         num_workers=2,
-        collate_fn=custom_collate_fn
+        collate_fn=custom_collate_fn,
+        sampler=sampler,
+        pin_memory=True
     )
     return dataloader

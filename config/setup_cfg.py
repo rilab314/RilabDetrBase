@@ -3,6 +3,7 @@ from detectron2.config import get_cfg
 from detectron2.projects.deeplab import add_deeplab_config
 from detectron2.config import CfgNode as CN
 import yaml
+import os
 
 from modeling.utils.print_util import print_structure
 
@@ -29,8 +30,15 @@ def load_cfg_from_yaml(yaml_file):
     print('load_cfg_from_yaml:', yaml_file)
     with open(yaml_file, 'r') as f:
         yaml_cfg = yaml.safe_load(f)
-
+    
     cfg = get_cfg()
+    if '_BASE_' in yaml_cfg:
+        base_file = yaml_cfg.pop('_BASE_')
+        base_path = os.path.join(os.path.dirname(yaml_file), base_file)
+        with open(base_path, 'r') as f:
+            base_cfg = yaml.safe_load(f)
+        cfg = create_cfg_node(cfg, base_cfg)
+    
     cfg = create_cfg_node(cfg, yaml_cfg)
     return cfg
 
@@ -40,6 +48,8 @@ def create_cfg_node(cfg_node, yaml_dict):
         if isinstance(value, dict):
             child = cfg_node[key] if key in cfg_node else CN()
             cfg_node[key] = create_cfg_node(child, value)
+        elif isinstance(value, str) and value.lower() == 'none':
+            cfg_node[key] = None
         else:
             cfg_node[key] = value
     return cfg_node

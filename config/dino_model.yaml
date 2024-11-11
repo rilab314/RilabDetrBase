@@ -1,3 +1,4 @@
+_BASE_: Base-COCO-InstanceSegmentation.yaml
 DATASET:
   NAME: 'CustomDetectionDataset'
   ROOT_PATH: '/home/dolphin/choi_ws/SatLaneDet_2024/dataset/soccer-players'
@@ -76,6 +77,7 @@ MODEL:
     TOTAL_NUM_FEATURE_LEVELS: 4
     NUM_FEATURE_LEVELS: 4
     FEATURE_ORDER: low2high
+    ENFORCE_INPUT_PROJ: False
   DECODER:
     NAME: 'DINODecoder'
     DIM_FEEDFORWARD: 2048
@@ -88,6 +90,7 @@ MODEL:
     DN_NOISE_SCALE: 0.4
     DN_NUM: 100
     TOTAL_NUM_FEATURE_LEVELS: 4
+    ENFORCE_INPUT_PROJ: False
   MATCHER:
     COST_TYPES: ['cls', 'box']  # ['cls', 'box', 'mask']
     COST_CLASS: 1
@@ -110,6 +113,11 @@ MODEL:
   TEST:
     OBJECT_MASK_THRESHOLD: 0.25,
     OVERLAP_THRESHOLD: 0.5,
+    SEMANTIC_ON: False
+    INSTANCE_ON: True
 
+SOLVER:
+  WEIGHT_DECAY_NORM: 0.0
+  WEIGHT_DECAY_EMBED: 0.0
 
 VERSION: 2

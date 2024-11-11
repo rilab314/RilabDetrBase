@@ -25,7 +25,7 @@ from modeling.utils.shared_resources import get_bbox_embed
 from modeling.utils.print_util import print_structure
 
 
-class DINOModel(nn.Module):
+class DinoModel(nn.Module):
     """
     Main class for mask classification semantic segmentation architectures.
     """
@@ -84,7 +84,11 @@ class DINOModel(nn.Module):
         encoder = DINOEncoder(cfg, backbone.output_shape())
         # 박스 예측을 위한 공용 레이어 미리 생성
         _ = get_bbox_embed(cfg.MODEL.DECODER.HIDDEN_DIM)
-        encoder_head = EncoderHead(cfg.MODEL.ENCODER.HIDDEN_DIM, cfg.MODEL.DECODER.NUM_CLASSES)
+        encoder_head = EncoderHead(
+            hidden_dim=cfg.MODEL.ENCODER.HIDDEN_DIM,
+            num_classes=cfg.MODEL.DEC_HEAD.NUM_CLASSES,
+            num_queries=cfg.MODEL.DECODER.NUM_OBJECT_QUERIES
+        )
         decoder = DINODecoder(cfg)
         decoder_head = DecoderHead(cfg)
         matcher = HungarianMatcher(
@@ -139,6 +143,10 @@ class DINOModel(nn.Module):
                    * "filename": str, the filename of the image
         Returns:
         """
+        print("Type of batched_inputs:", type(batched_inputs))
+        print("First element type:", type(batched_inputs[0]) if len(batched_inputs) > 0 else "empty")
+        print("batched_inputs:", batched_inputs)
+
         images = [x["image"].to(self.device) for x in batched_inputs]
         images = [(x - self.pixel_mean) / self.pixel_std for x in images]
         images = ImageList.from_tensors(images, self.size_divisibility)
