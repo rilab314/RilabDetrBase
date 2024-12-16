@@ -16,8 +16,15 @@ model_variant:
   with_box_refine: false
   frozen_weights: null
 
+dataset:
+  dataset_file: 'coco'
+  coco_path: './data/coco'
+  coco_panoptic_path: null
+  remove_difficult: false
+
 backbone:
-  name: 'resnet50'
+  type: 'ResNet50_Clip'
+  output_layers: ['layer1', 'layer2', 'layer3', 'layer4']
   dilation: false
   position_embedding:
     type: 'sine'
@@ -52,12 +59,6 @@ loss_weights:
   bbox_loss_coef: 5
   giou_loss_coef: 2
   focal_alpha: 0.25
-
-dataset:
-  dataset_file: 'coco'
-  coco_path: './data/coco'
-  coco_panoptic_path: null
-  remove_difficult: false
 
 runtime:
   output_dir: ''
