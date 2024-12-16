@@ -15,6 +15,9 @@ import torch.nn.functional as F
 from torch.autograd import Function
 from torch.autograd.function import once_differentiable
 
+# CHECK: make.sh 로 빌드한 모듈에서 undefined reference 에러가 발생하는건 빌드가 잘못된 것
+# 나의 경우, ninja가 설치되지 않았다는 warning이 보였기 때문에 sudo apt install ninja-build 명령어로 설치 후
+# make.sh 명령어를 다시 실행하니 정상적으로 빌드되었다.
 import MultiScaleDeformableAttention as MSDA
 
 

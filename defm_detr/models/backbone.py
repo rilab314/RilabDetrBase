@@ -65,7 +65,6 @@ class FrozenBatchNorm2d(torch.nn.Module):
 
 
 class BackboneBase(nn.Module):
-
     def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool):
         super().__init__()
         for name, parameter in backbone.named_parameters():
@@ -129,10 +128,10 @@ class Joiner(nn.Sequential):
         return out, pos
 
 
-def build_backbone(args):
-    position_embedding = build_position_encoding(args)
-    train_backbone = args.lr_backbone > 0
-    return_interm_layers = args.masks or (args.num_feature_levels > 1)
-    backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+def build_backbone(cfg):
+    position_embedding = build_position_encoding(cfg)
+    train_backbone = cfg.lr_backbone > 0
+    return_interm_layers = cfg.masks or (cfg.num_feature_levels > 1)
+    backbone = Backbone(name=cfg.backbone.name, train_backbone=train_backbone, return_interm_layers=return_interm_layers, dilation=cfg.backbone.dilation)
     model = Joiner(backbone, position_embedding)
     return model

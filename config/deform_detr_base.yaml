@@ -1,0 +1,70 @@
+training:
+  lr: 2e-4
+  lr_backbone: 2e-5
+  lr_linear_proj:
+    names: ['reference_points', 'sampling_offsets']
+    mult: 0.1
+  batch_size: 2
+  weight_decay: 1e-4
+  epochs: 50
+  lr_drop: 40
+  lr_drop_epochs: null
+  clip_max_norm: 0.1
+  sgd: false
+
+model_variant:
+  with_box_refine: false
+  frozen_weights: null
+
+backbone:
+  name: 'resnet50'
+  dilation: false
+  position_embedding:
+    type: 'sine'
+    scale: 6.283185307179586  # 2 * pi
+  num_feature_levels: 4
+
+transformer:
+  enc_layers: 6
+  dec_layers: 6
+  dim_feedforward: 1024
+  hidden_dim: 256
+  dropout: 0.1
+  nheads: 8
+  num_queries: 300
+  dec_n_points: 4
+  enc_n_points: 4
+  two_stage: false
+
+segmentation:
+  masks: false
+  aux_loss: true
+
+matcher:
+  set_cost_class: 2
+  set_cost_bbox: 5
+  set_cost_giou: 2
+
+loss_weights:
+  mask_loss_coef: 1
+  dice_loss_coef: 1
+  cls_loss_coef: 2
+  bbox_loss_coef: 5
+  giou_loss_coef: 2
+  focal_alpha: 0.25
+
+dataset:
+  dataset_file: 'coco'
+  coco_path: './data/coco'
+  coco_panoptic_path: null
+  remove_difficult: false
+
+runtime:
+  output_dir: ''
+  device: 'cuda'
+  seed: 42
+  resume: ''
+  start_epoch: 0
+  eval: false
+  num_workers: 2
+  cache_mode: false

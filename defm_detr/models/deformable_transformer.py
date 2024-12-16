@@ -375,20 +375,20 @@ def _get_activation_fn(activation):
     raise RuntimeError(F"activation should be relu/gelu, not {activation}.")
 
 
-def build_deforamble_transformer(args):
+def build_deforamble_transformer(cfg):
     return DeformableTransformer(
-        d_model=args.hidden_dim,
-        nhead=args.nheads,
-        num_encoder_layers=args.enc_layers,
-        num_decoder_layers=args.dec_layers,
-        dim_feedforward=args.dim_feedforward,
-        dropout=args.dropout,
+        d_model=cfg.transformer.hidden_dim,
+        nhead=cfg.transformer.nheads,
+        num_encoder_layers=cfg.transformer.enc_layers,
+        num_decoder_layers=cfg.transformer.dec_layers,
+        dim_feedforward=cfg.transformer.dim_feedforward,
+        dropout=cfg.transformer.dropout,
         activation="relu",
         return_intermediate_dec=True,
-        num_feature_levels=args.num_feature_levels,
-        dec_n_points=args.dec_n_points,
-        enc_n_points=args.enc_n_points,
-        two_stage=args.two_stage,
-        two_stage_num_proposals=args.num_queries)
+        num_feature_levels=cfg.backbone.num_feature_levels,
+        dec_n_points=cfg.transformer.dec_n_points,
+        enc_n_points=cfg.transformer.enc_n_points,
+        two_stage=cfg.transformer.two_stage,
+        two_stage_num_proposals=cfg.transformer.num_queries)
 
 
