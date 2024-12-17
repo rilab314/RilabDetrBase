@@ -23,8 +23,8 @@ dataset:
   remove_difficult: false
 
 backbone:
-  type: 'ResNet50_Clip'
-  output_layers: ['layer1', 'layer2', 'layer3', 'layer4']
+  type: 'SwinV2_384'
+  output_layers: ['layer2', 'layer3', 'layer4']
   dilation: false
   position_embedding:
     type: 'sine'

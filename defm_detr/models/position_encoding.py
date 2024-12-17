@@ -16,6 +16,8 @@ from torch import nn
 
 from util.misc import NestedTensor
 
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
 
 class PositionEmbeddingSine(nn.Module):
     """
@@ -84,14 +86,14 @@ class PositionEmbeddingLearned(nn.Module):
         return pos
 
 
-def build_position_encoding(args):
-    N_steps = args.hidden_dim // 2
-    if args.position_embedding in ('v2', 'sine'):
+def build_position_encoding(cfg):
+    N_steps = cfg.transformer.hidden_dim // 2
+    if cfg.backbone.position_embedding.type in ('sine', 'v2'):
         # TODO find a better way of exposing other arguments
         position_embedding = PositionEmbeddingSine(N_steps, normalize=True)
-    elif args.position_embedding in ('v3', 'learned'):
+    elif cfg.backbone.position_embedding.type in ('learned', 'v3'):
         position_embedding = PositionEmbeddingLearned(N_steps)
     else:
-        raise ValueError(f"not supported {args.position_embedding}")
+        raise ValueError(f"not supported {cfg.position_embedding}")
 
     return position_embedding

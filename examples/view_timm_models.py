@@ -14,7 +14,7 @@ def view_models():
 
     model_names = timm.list_models('swin*', pretrained=True)
     print(f'\nmodel_names: {model_names}\n')
-    model = timm.create_model('swinv2_base_window12to24_192to384', pretrained=True)
+    model = timm.create_model('swin_base_patch4_window12_384.ms_in22k', pretrained=True)
     print_structure(model.default_cfg, indent=2, title='model.default_cfg')
     print('\n----- model structure -----')
     print_model_structure(model)

@@ -20,8 +20,9 @@ from torchvision.models._utils import IntermediateLayerGetter
 from typing import Dict, List
 
 from util.misc import NestedTensor, is_main_process
-
 from .position_encoding import build_position_encoding
+
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
 class FrozenBatchNorm2d(torch.nn.Module):
