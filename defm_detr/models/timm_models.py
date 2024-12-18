@@ -4,16 +4,9 @@ import timm
 import torch.nn as nn
 from torchvision import transforms
 from typing import List
-import os
-import sys
-detr_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-project_root = os.path.dirname(detr_root)
-if detr_root not in sys.path:
-    sys.path.append(detr_root)
-if project_root not in sys.path:
-    sys.path.append(project_root)
+from dataclasses import dataclass
 
-
+import settings
 from defm_detr.models.backbone import Joiner, build_position_encoding
 from defm_detr.models.position_encoding import NestedTensor
 from config.config import load_config
@@ -21,27 +14,34 @@ from config.config import load_config
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
 
+@dataclass
+class LayerInfo:
+    name: str
+    stride: int
+    channels: int
+    module: nn.Module
+
+
 class TimmModel(nn.Module):
-    def __init__(self, model_name, pretrained=True, output_layers=List[str]):
+    def __init__(self, model_name, pretrained=True, output_names=List[str]):
         super().__init__()
         self._model = timm.create_model(model_name, pretrained=pretrained).to(device)
+        print('model cfg:', self._model.default_cfg)
         self._preprocess = transforms.Compose([
             transforms.Normalize(mean=self._model.default_cfg['mean'], std=self._model.default_cfg['std'])
         ])
-        self._layer_names = ['layer1', 'layer2', 'layer3', 'layer4']
-        self._output_layers = output_layers
-        strides = [4, 8, 16, 32]
-        self._strides = [strides[i] for i, name in enumerate(self._layer_names) if name in self._output_layers]
-        self._channels = []
+        self._output_layers = output_names
+        self._interm_layers = []
         self._features = {}
         self._hooks = []
 
-    def set_hooks(self, interm_layers, layer_names):
+    def set_hooks(self, interm_layers, output_names):
         def hook_fn(module, input, output, layer_name):
             self._features[layer_name] = output
         
-        for module, layer_name in zip(interm_layers, layer_names):
-            self._hooks.append(module.register_forward_hook(lambda module, input, output, layer_name=layer_name: hook_fn(module, input, output, layer_name)))
+        output_layers = [layer for layer in interm_layers if layer.name in output_names]
+        for layer_info in output_layers:
+            self._hooks.append(layer_info.module.register_forward_hook(lambda module, input, output, layer_name=layer_info.name: hook_fn(module, input, output, layer_name)))
     
     def forward(self, sample: NestedTensor):
         """
@@ -59,7 +59,7 @@ class TimmModel(nn.Module):
         tensors = {}
         for name, feature in features.items():
             B, C, H, W = feature.shape
-            mask = torch.zeros((B, H, W), dtype=torch.bool)
+            mask = torch.zeros((B, H, W), dtype=torch.bool).to(device)
             tensors[name] = NestedTensor(feature, mask)
         return tensors
     
@@ -69,29 +69,31 @@ class TimmModel(nn.Module):
 
     @property
     def strides(self):
-        return self._strides
+        return [info.stride for info in self._interm_layers]
     
     @property
     def num_channels(self):
-        return self._channels
+        return [info.channels for info in self._interm_layers]
 
 
 class ResNet50_Clip(TimmModel):
-    def __init__(self, output_layers):
-        super().__init__('resnet50_clip.cc12m', pretrained=True, output_layers=output_layers)
-        interm_layers = [self._model.stages[i] for i in range(4)]
-        self.set_hooks(interm_layers, self.layer_names)
-        channels = [2048, 1024, 512, 256]
-        self._channels = [channels[i] for i, name in enumerate(self._layer_names) if name in self._output_layers]
+    def __init__(self, output_names):
+        super().__init__('resnet50_clip.cc12m', pretrained=True, output_names=output_names)
+        self._interm_layers = [LayerInfo(name='layer1', stride=4, channels=128, module=self._model.stages[0]),
+                               LayerInfo(name='layer2', stride=8, channels=256, module=self._model.stages[1]),
+                               LayerInfo(name='layer3', stride=16, channels=512, module=self._model.stages[2]),
+                               LayerInfo(name='layer4', stride=32, channels=1024, module=self._model.stages[3])]
+        self.set_hooks(self._interm_layers, self._output_layers)
 
 
 class SwinV2_384(TimmModel):
-    def __init__(self, output_layers):
-        super().__init__('swin_base_patch4_window12_384.ms_in22k', output_layers=output_layers)
-        interm_layers = [self._model.layers[i] for i in range(4)]
-        self.set_hooks(interm_layers, self._layer_names)
-        channels = [2048, 1024, 512, 256]
-        self._channels = [channels[i] for i, name in enumerate(self._layer_names) if name in self._output_layers]
+    def __init__(self, output_names):
+        super().__init__('swin_base_patch4_window12_384.ms_in22k', output_names=output_names)
+        self._interm_layers = [LayerInfo(name='layer1', stride=4, channels=128, module=self._model.layers[0]),
+                               LayerInfo(name='layer2', stride=8, channels=256, module=self._model.layers[1]),
+                               LayerInfo(name='layer3', stride=16, channels=512, module=self._model.layers[2]),
+                               LayerInfo(name='layer4', stride=32, channels=1024, module=self._model.layers[3])]
+        self.set_hooks(self._interm_layers, self._output_layers)
 
     def _post_process(self, features):
         tensors = {}
@@ -104,11 +106,11 @@ class SwinV2_384(TimmModel):
         return tensors
 
 
-def build_backbone(cfg):
+def build_hf_backbone(cfg):
     if cfg.backbone.type == 'ResNet50_Clip':
-        backbone = ResNet50_Clip(output_layers=cfg.backbone.output_layers)
+        backbone = ResNet50_Clip(output_names=cfg.backbone.output_layers)
     elif cfg.backbone.type == 'SwinV2_384':
-        backbone = SwinV2_384(output_layers=cfg.backbone.output_layers)
+        backbone = SwinV2_384(output_names=cfg.backbone.output_layers)
     else:
         raise ValueError(f"Backbone {cfg.backbone.type} not supported")
     
@@ -119,13 +121,9 @@ def build_backbone(cfg):
 
 def check_outputs():
     cfg = load_config()
-    model = build_backbone(cfg)
-    if cfg.backbone.type == 'ResNet50_Clip':
-        image = np.random.rand(1, 3, 512, 512)
-        mask = np.zeros((1, 512, 512), dtype=bool)
-    elif cfg.backbone.type == 'SwinV2_384':
-        image = np.random.rand(1, 3, 384, 384)
-        mask = np.zeros((1, 384, 384), dtype=bool)
+    model = build_hf_backbone(cfg)
+    image = np.random.rand(1, 3, 384, 384)
+    mask = np.zeros((1, 384, 384), dtype=bool)
     sample = NestedTensor(torch.from_numpy(image).to(torch.float32).to(device), 
                           torch.from_numpy(mask).to(torch.bool).to(device))
     xs, pos_embeds = model.forward(sample)

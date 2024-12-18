@@ -22,6 +22,15 @@ class CfgNode:
                 lines.append(f"{indent}{key}: {value}")
         return '\n'.join(lines)
 
+    def to_dict(self):
+        result = {}
+        for key, value in self.__dict__.items():
+            if isinstance(value, CfgNode):
+                result[key] = value.to_dict()
+            else:
+                result[key] = value
+        return result
+
 
 def load_config(yaml_file='config/deform_detr_base.yaml'):
     with open(yaml_file, 'r') as file:

@@ -12,28 +12,23 @@ training:
   clip_max_norm: 0.1
   sgd: false
 
-model_variant:
-  with_box_refine: false
-  frozen_weights: null
-
 dataset:
-  dataset_file: 'coco'
-  coco_path: './data/coco'
-  coco_panoptic_path: null
-  remove_difficult: false
+  name: 'coco'
+  path: './data/coco'
+  num_classes: 20
 
 backbone:
-  type: 'SwinV2_384'
+  type: 'SwinV2_384'  # 'ResNet50_Clip'
   output_layers: ['layer2', 'layer3', 'layer4']
   dilation: false
   position_embedding:
     type: 'sine'
     scale: 6.283185307179586  # 2 * pi
-  num_feature_levels: 4
 
 transformer:
   enc_layers: 6
   dec_layers: 6
+  num_feature_levels: 4
   dim_feedforward: 1024
   hidden_dim: 256
   dropout: 0.1
@@ -41,23 +36,25 @@ transformer:
   num_queries: 300
   dec_n_points: 4
   enc_n_points: 4
-  two_stage: false
-
-segmentation:
-  masks: false
+  with_box_refine: false
   aux_loss: true
+  two_stage: true
+  segmentation: false
+  frozen_weights: false
 
 matcher:
-  set_cost_class: 2
-  set_cost_bbox: 5
-  set_cost_giou: 2
+  class_cost: 2  # TODO check
+  bbox_cost: 5
+  giou_cost: 2
 
-loss_weights:
-  mask_loss_coef: 1
-  dice_loss_coef: 1
-  cls_loss_coef: 2
-  bbox_loss_coef: 5
-  giou_loss_coef: 2
+losses:
+  cls_loss: 2
+  bbox_loss: 5
+  giou_loss: 2
+  mask_loss: 1
+  dice_loss: 1
+  cardinality: true
+  accuracy: true
   focal_alpha: 0.25
 
 runtime:

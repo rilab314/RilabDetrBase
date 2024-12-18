@@ -385,7 +385,7 @@ def build_deforamble_transformer(cfg):
         dropout=cfg.transformer.dropout,
         activation="relu",
         return_intermediate_dec=True,
-        num_feature_levels=cfg.backbone.num_feature_levels,
+        num_feature_levels=cfg.transformer.num_feature_levels,
         dec_n_points=cfg.transformer.dec_n_points,
         enc_n_points=cfg.transformer.enc_n_points,
         two_stage=cfg.transformer.two_stage,
