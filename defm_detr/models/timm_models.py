@@ -26,7 +26,6 @@ class TimmModel(nn.Module):
     def __init__(self, model_name, pretrained=True, output_names=List[str]):
         super().__init__()
         self._model = timm.create_model(model_name, pretrained=pretrained).to(device)
-        print('model cfg:', self._model.default_cfg)
         self._preprocess = transforms.Compose([
             transforms.Normalize(mean=self._model.default_cfg['mean'], std=self._model.default_cfg['std'])
         ])
@@ -69,11 +68,11 @@ class TimmModel(nn.Module):
 
     @property
     def strides(self):
-        return [info.stride for info in self._interm_layers]
+        return [layer.stride for layer in self._interm_layers if layer.name in self._output_layers]
     
     @property
     def num_channels(self):
-        return [info.channels for info in self._interm_layers]
+        return [layer.channels for layer in self._interm_layers if layer.name in self._output_layers]
 
 
 class ResNet50_Clip(TimmModel):
@@ -117,21 +116,3 @@ def build_hf_backbone(cfg):
     position_embedding = build_position_encoding(cfg)
     model = Joiner(backbone, position_embedding)
     return model
-
-
-def check_outputs():
-    cfg = load_config()
-    model = build_hf_backbone(cfg)
-    image = np.random.rand(1, 3, 384, 384)
-    mask = np.zeros((1, 384, 384), dtype=bool)
-    sample = NestedTensor(torch.from_numpy(image).to(torch.float32).to(device), 
-                          torch.from_numpy(mask).to(torch.bool).to(device))
-    xs, pos_embeds = model.forward(sample)
-    print(f"xs: {len(xs)}")
-    for x, pos in zip(xs, pos_embeds):
-        print(f"  x: {x.tensors.shape}, pos: {pos.shape}")
-
-
-if __name__ == "__main__":
-    check_outputs()
-

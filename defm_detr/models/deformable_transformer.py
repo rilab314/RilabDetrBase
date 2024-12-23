@@ -18,10 +18,11 @@ from torch.nn.init import xavier_uniform_, constant_, uniform_, normal_
 
 from util.misc import inverse_sigmoid
 from models.ops.modules import MSDeformAttn
+from util.misc import MLP
 
 
 class DeformableTransformer(nn.Module):
-    def __init__(self, d_model=256, nhead=8,
+    def __init__(self, num_classes: int, d_model=256, nhead=8,
                  num_encoder_layers=6, num_decoder_layers=6, dim_feedforward=1024, dropout=0.1,
                  activation="relu", return_intermediate_dec=False,
                  num_feature_levels=4, dec_n_points=4,  enc_n_points=4,
@@ -50,6 +51,8 @@ class DeformableTransformer(nn.Module):
             self.enc_output_norm = nn.LayerNorm(d_model)
             self.pos_trans = nn.Linear(d_model * 2, d_model * 2)
             self.pos_trans_norm = nn.LayerNorm(d_model * 2)
+            self.class_embed = nn.Linear(d_model, num_classes)
+            self.bbox_embed = MLP(d_model, d_model, 4, 3)
         else:
             self.reference_points = nn.Linear(d_model, 2)
 
@@ -156,10 +159,12 @@ class DeformableTransformer(nn.Module):
         bs, _, c = memory.shape
         if self.two_stage:
             output_memory, output_proposals = self.gen_encoder_output_proposals(memory, mask_flatten, spatial_shapes)
+            print('output_memory.shape', output_memory.shape)
+            print('output_proposals.shape', output_proposals.shape)
 
             # hack implementation for two-stage Deformable DETR
-            enc_outputs_class = self.decoder.class_embed[self.decoder.num_layers](output_memory)
-            enc_outputs_coord_unact = self.decoder.bbox_embed[self.decoder.num_layers](output_memory) + output_proposals
+            enc_outputs_class = self.class_embed(output_memory)
+            enc_outputs_coord_unact = self.bbox_embed(output_memory) + output_proposals
 
             topk = self.two_stage_num_proposals
             topk_proposals = torch.topk(enc_outputs_class[..., 0], topk, dim=1)[1]
@@ -377,6 +382,7 @@ def _get_activation_fn(activation):
 
 def build_deforamble_transformer(cfg):
     return DeformableTransformer(
+        num_classes=cfg.dataset.num_classes,
         d_model=cfg.transformer.hidden_dim,
         nhead=cfg.transformer.nheads,
         num_encoder_layers=cfg.transformer.enc_layers,

@@ -1,36 +1,48 @@
+import numpy as np
 import torch.nn as nn
+import torch
 
 
-def print_structure(data, indent=0, title=None):
-    print(title)
-    indent_str = '  ' * indent  # 들여쓰기 공백
+def print_data(data, indent=2, level=0, title=None):
+    indent_str = ' ' * indent * level  # 들여쓰기 공백
+    if title is not None:
+        print(f"{indent_str}<------ {title} ------")
     if isinstance(data, dict):
         for key, value in data.items():                    
-            # 길이가 100 이하이면 한 줄로 출력
             if isinstance(value, (dict, list)):
                 print(f"{indent_str}{key}:")
-                print_structure(value, indent + 1)
+                print_data(value, indent, level+1)
             else:
                 value_str = str(value)
                 if len(value_str) <= 100:
                     print(f"{indent_str}{key}: {value_str}")
+                elif isinstance(value, torch.Tensor):
+                    print(f"{indent_str}{key}: {value.shape}")
+                elif isinstance(value, np.ndarray):
+                    print(f"{indent_str}{key}: {value.shape}")
                 else:
-                    print(f"{indent_str}{key}:")
-                    print_structure(value, indent + 2)
+                    print(f"{indent_str}{key}: {str(value)[:100]}")
     elif isinstance(data, list):
-        for item in data:
-            if isinstance(item, (dict, list)):
-                print_structure(item, indent)
+        for key, value in enumerate(data):
+            if isinstance(value, (dict, list)):
+                print(f"{indent_str}{key}:")
+                print_data(value, indent, level+1)
             else:
-                item_str = str(item)
-                if len(item_str) <= 100:
-                    print(f"{indent_str}- {item_str}")
+                value_str = str(value)
+                if len(value_str) <= 100:
+                    print(f"{indent_str}{key}: {value_str}")
+                elif isinstance(value, torch.Tensor):
+                    print(f"{indent_str}{key}: {value.shape}")
+                elif isinstance(value, np.ndarray):
+                    print(f"{indent_str}{key}: {value.shape}")
                 else:
-                    print(f"{indent_str}-")
-                    print_structure(item, indent + 2)
+                    print(f"{indent_str}{key}: {str(value)[:100]}")
+    if title is not None:
+        print(f"{indent_str}------ {title} ------>")
 
 
-def print_model_structure(model, max_depth=None):
+
+def print_model(model, max_depth=None):
     """
     모델의 계층적 구조를 번호와 함께 들여쓰기로 출력하는 함수
     모델의 모든 모듈을 탐색하고, 각 계층에 번호를 붙여서 출력합니다.
