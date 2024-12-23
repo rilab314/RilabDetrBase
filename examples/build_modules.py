@@ -1,88 +1,64 @@
 from detectron2.config import CfgNode as CN
+import numpy as np
+import torch
 
 import settings
-from config.setup_cfg import setup_cfg
-from modeling.utils.print_util import print_structure
-from modeling.backbone.swin import D2SwinTransformer
-from modeling.encoder import DINOEncoder
-from modeling.decoder import DINODecoder
-from modeling.matcher import HungarianMatcher
-from modeling.criterion import SetCriterion
-from modeling.dino_model import DINOModel
+from config.config import load_config
+from models.timm_models import build_hf_backbone
+from utility.print_util import print_model, print_data
+from models.deformable_transformer import build_deforamble_transformer
+from models import build_model
+from util.misc import NestedTensor
+
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 def create_modules():
-    cfg = setup_cfg()
-    print('\n========== config ==========\n', cfg)
-    backbone = D2SwinTransformer(cfg)
-    print('\n========== backbone ==========\n', backbone)
-    encoder = DINOEncoder(cfg, backbone.output_shape())
-    print('\n========== encoder ==========\n', encoder)
-    decoder = DINODecoder(cfg)
-    print('\n========== decoder ==========\n', decoder)
-    matcher = create_matcher(cfg)
-    print('\n========== matcher ==========\n', matcher)
-    criterion = create_criterion(cfg, matcher)
-    print('\n========== criterion ==========\n', criterion)
-    model = DINOModel(cfg)
-    print('\n========== model ==========\n', model)
+    print('\n========== config ==========\n')
+    cfg = load_config()
+    # print(cfg)
+    print('\n========== backbone ==========\n')
+    backbone = build_hf_backbone(cfg)
+    print_model(backbone, max_depth=4)
+    print('\n========== detr ==========\n')
+    detr = build_deforamble_transformer(cfg)
+    print_model(detr, max_depth=3)
+    model, criterion, postprocessors = build_model(cfg)
+    print('\n========== model ==========\n')
+    print_model(model, max_depth=4)
+    print('\n========== criterion ==========\n')
+    print_model(criterion, max_depth=4)
+    print('\n========== postprocessors ==========\n')
+    print_model(postprocessors, max_depth=4)
 
 
-def cfg_to_dict(cfg_node):
-    """Recursively convert CfgNode to a dictionary."""
-    if not isinstance(cfg_node, CN):
-        return cfg_node
-    cfg_dict = {}
-    for key, value in cfg_node.items():
-        if isinstance(value, CN):
-            cfg_dict[key] = cfg_to_dict(value)
-        else:
-            cfg_dict[key] = value
-    return cfg_dict
+def check_backbone_outputs():
+    cfg = load_config()
+    model = build_hf_backbone(cfg)
+    image = np.random.rand(1, 3, 384, 384)
+    mask = np.zeros((1, 384, 384), dtype=bool)
+    sample = NestedTensor(torch.from_numpy(image).to(torch.float32).to(device), 
+                          torch.from_numpy(mask).to(torch.bool).to(device))
+    xs, pos_embeds = model.forward(sample)
+    print(f"xs: {len(xs)}")
+    for x, pos in zip(xs, pos_embeds):
+        print(f"  x: {x.tensors.shape}, pos: {pos.shape}")
 
 
-def create_matcher(cfg):
-    matcher = HungarianMatcher(
-        cost_types=cfg.MODEL.MATCHER.COST_TYPES,
-        cost_class=cfg.MODEL.MATCHER.COST_CLASS,
-        cost_box=cfg.MODEL.MATCHER.COST_BOX,
-        cost_giou=cfg.MODEL.MATCHER.COST_GIOU,
-    )
-    return matcher
-
-def create_criterion(cfg, matcher):
-    # loss weights
-    weight_dict = dict(
-        loss_ce = cfg.MODEL.CRITERION.CLASS_WEIGHT,
-        loss_bbox = cfg.MODEL.CRITERION.BOX_WEIGHT,
-        loss_giou = cfg.MODEL.CRITERION.GIOU_WEIGHT,
-        loss_mask = cfg.MODEL.CRITERION.MASK_WEIGHT,
-        loss_dice = cfg.MODEL.CRITERION.DICE_WEIGHT,
-    )
-    '''
-    # two stage is the query selection scheme
-    if cfg.MODEL.MaskDINO.TWO_STAGE:
-        interm_weight_dict = {}
-        interm_weight_dict.update({k + f'_interm': v for k, v in weight_dict.items()})
-        weight_dict.update(interm_weight_dict)
-
-    if cfg.MODEL.MaskDINO.DEEP_SUPERVISION:
-        dec_layers = cfg.MODEL.MaskDINO.DEC_LAYERS
-        aux_weight_dict = {}
-        for i in range(dec_layers):
-            aux_weight_dict.update({k + f"_{i}": v for k, v in weight_dict.items()})
-        weight_dict.update(aux_weight_dict)    
-    '''
-    criterion = SetCriterion(
-        num_classes=cfg.MODEL.DEC_HEAD.NUM_CLASSES,
-        matcher=matcher,
-        weight_dict=weight_dict,
-        eos_coef=cfg.MODEL.CRITERION.NO_OBJECT_WEIGHT,
-        losses=cfg.MODEL.CRITERION.LOSS_TYPES,
-        num_points=cfg.MODEL.CRITERION.NUM_POINTS,
-    )
-    return criterion
+def check_defm_detr_outputs():
+    cfg = load_config()
+    model, criterion, postprocessors = build_model(cfg)
+    image = np.random.rand(1, 3, 384, 384)
+    mask = np.zeros((1, 384, 384), dtype=bool)
+    sample = NestedTensor(torch.from_numpy(image).to(torch.float32).to(device), 
+                          torch.from_numpy(mask).to(torch.bool).to(device))
+    print_model(model, max_depth=4)
+    print_model(model.transformer.decoder, max_depth=3)
+    outputs = model(sample)
+    print_data(outputs, title='outputs')
 
 
 if __name__ == "__main__":
-    create_modules()
+    # create_modules()
+    # check_backbone_outputs()
+    check_defm_detr_outputs()
