@@ -32,6 +32,27 @@ class CfgNode:
         return result
 
 
+    def __contains__(self, key):
+        return key in self.__dict__
+    
+    def __getitem__(self, key):
+        if key in self.__dict__:
+            return getattr(self, key)
+        else:
+            raise KeyError(f"Key '{key}' not found in CfgNode.")
+    
+    def __setitem__(self, key, value):
+        if isinstance(value, dict):
+            value = CfgNode(**value)
+        setattr(self, key, value)
+    
+    def get(self, key, default=None):
+        if key in self.__dict__:
+            return getattr(self, key)
+        else:
+            return default
+
+
 def load_config(yaml_file='config/deform_detr_base.yaml'):
     with open(yaml_file, 'r') as file:
         data = yaml.safe_load(file)

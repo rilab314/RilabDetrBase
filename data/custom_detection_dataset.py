@@ -7,6 +7,8 @@ from detectron2.structures import Instances, Boxes
 
 from data.composer_factory import composer_factory
 
+device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
 
 class CustomDetectionDataset(Dataset):
     def __init__(self, cfg, split: str):
@@ -18,13 +20,12 @@ class CustomDetectionDataset(Dataset):
             cfg.INPUT.PIXEL_MEAN: 이미지 정규화에 사용되는 평균 값
             cfg.INPUT.PIXEL_STD: 이미지 정규화에 사용되는 표준편차 값
         """
-        split = split.upper()
-        self.root_path = cfg.DATASET.ROOT_PATH
-        self.split = cfg.DATASET[split].SPLIT
-        self.image_dir = str(os.path.join(self.root_path, self.split, 'images'))
-        self.label_dir = str(os.path.join(self.root_path, self.split, 'labels'))
-        self.image_files = sorted(os.listdir(self.image_dir))
-        self.image_files = [file for file in self.image_files if file.endswith('.jpg')]
+        self.root_path = cfg.dataset.path
+        self.split = split
+        self.image_dir = str(os.path.join(cfg.dataset.path, self.split, 'images'))
+        self.label_dir = str(os.path.join(cfg.dataset.path, self.split, 'labels'))
+        image_files = sorted(os.listdir(self.image_dir))
+        self.image_files = [file for file in image_files if file.endswith('.jpg')]
         self.augment = composer_factory(cfg, split)
         self.cfg = cfg  # cfg 객체를 저장하여 다른 메서드에서 사용
 
@@ -34,17 +35,15 @@ class CustomDetectionDataset(Dataset):
     def __getitem__(self, idx):
         image = self.load_image(idx)
         bboxes, category_ids = self.load_labels(idx)
-        # 데이터 증강 적용
         image, bboxes, category_ids = self.apply_augmentation(
             image, bboxes, category_ids
         )
-        # 바운딩 박스와 레이블을 Detectron2의 Instances 객체로 변환
-        image_shape = self.cfg.DATASET.IMAGE_HEIGHT, self.cfg.DATASET.IMAGE_WIDTH
-        instances = self.create_instances(bboxes, category_ids, image_shape)
-        # 최종 데이터 반환
+        image = image.to(device)
+        bboxes = torch.tensor(bboxes, dtype=torch.float32, device=device)
+        category_ids = torch.tensor(category_ids, dtype=torch.int64, device=device)
         return {
             'image': image,
-            'instances': instances,
+            'targets': {'boxes': bboxes, 'labels': category_ids},
             'height': image.shape[1],
             'width': image.shape[2],
             'filename': os.path.join(self.image_dir, self.image_files[idx]),
@@ -84,7 +83,7 @@ class CustomDetectionDataset(Dataset):
                     category_ids.append(int(class_id))
         else:
             print(f"Label file not found: {label_path}")
-        return bboxes, category_ids
+        return np.array(bboxes, dtype=np.float32), np.array(category_ids, dtype=np.int64)
 
     def apply_augmentation(self, image, bboxes, category_ids):
         transformed = self.augment(

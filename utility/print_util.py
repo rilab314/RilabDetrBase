@@ -6,7 +6,11 @@ import torch
 def print_data(data, indent=2, level=0, title=None):
     indent_str = ' ' * indent * level  # 들여쓰기 공백
     if title is not None:
-        print(f"{indent_str}<------ {title} ------")
+        print(f"{indent_str}<------ {title}")
+    if len(str(data)) < 150:
+        print(f"{indent_str}{data}")
+        return
+
     if isinstance(data, dict):
         for key, value in data.items():                    
             if isinstance(value, (dict, list)):
@@ -17,9 +21,9 @@ def print_data(data, indent=2, level=0, title=None):
                 if len(value_str) <= 100:
                     print(f"{indent_str}{key}: {value_str}")
                 elif isinstance(value, torch.Tensor):
-                    print(f"{indent_str}{key}: {value.shape}")
+                    print(f"{indent_str}{key}: tensor{tuple(value.shape)}")
                 elif isinstance(value, np.ndarray):
-                    print(f"{indent_str}{key}: {value.shape}")
+                    print(f"{indent_str}{key}: np{value.shape}")
                 else:
                     print(f"{indent_str}{key}: {str(value)[:100]}")
     elif isinstance(data, list):
@@ -36,9 +40,9 @@ def print_data(data, indent=2, level=0, title=None):
                 elif isinstance(value, np.ndarray):
                     print(f"{indent_str}{key}: {value.shape}")
                 else:
-                    print(f"{indent_str}{key}: {str(value)[:100]}")
+                    print(f"{indent_str}{key}: {str(value)[:100]} ...")
     if title is not None:
-        print(f"{indent_str}------ {title} ------>")
+        print(f"{indent_str}------>")
 
 
 
