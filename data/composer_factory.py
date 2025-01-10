@@ -78,8 +78,8 @@ def create_augmentations(cfg):
     if 'gauss_noise' in aug_cfg:
         params = aug_cfg.gauss_noise
         augmentations.append(A.GaussNoise(
-            var_limit=params.get('var_limit', (10.0, 50.0)),
-            mean=params.get('mean', 0),
+            std_range=params.get('std_range', (0.2, 0.44)),
+            mean_range=params.get('mean_range', (0.0, 0.0)),
             p=params.get('p', 0.5)
         ))
 

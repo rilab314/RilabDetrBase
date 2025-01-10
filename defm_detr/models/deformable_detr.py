@@ -315,7 +315,7 @@ class SetCriterion(nn.Module):
         return losses
 
     @torch.no_grad()
-    def loss_cardinality(self, outputs, targets, indices, num_boxes):
+    def loss_cardinality(self, outputs, targets, indices, num_boxes, log=True):
         ''' 
         Compute the cardinality error, ie the absolute error in the number of predicted non-empty boxes
         This is not really a loss, it is intended for logging purposes only. It doesn't propagate gradients
@@ -329,7 +329,7 @@ class SetCriterion(nn.Module):
         losses = {'cardinality': card_err}
         return losses
 
-    def loss_boxes(self, outputs, targets, indices, num_boxes):
+    def loss_boxes(self, outputs, targets, indices, num_boxes, log=True):
         ''' 
         Compute the losses related to the bounding boxes, the L1 regression loss and the GIoU loss
         targets dicts must contain the key "boxes" containing a tensor of dim [nb_target_boxes, 4]
@@ -351,7 +351,7 @@ class SetCriterion(nn.Module):
         losses['giou_loss'] = loss_giou.sum() / num_boxes
         return losses
 
-    def loss_masks(self, outputs, targets, indices, num_boxes):
+    def loss_masks(self, outputs, targets, indices, num_boxes, log=True):
         '''
         Compute the losses related to the masks: the focal loss and the dice loss.
         targets dicts must contain the key "masks" containing a tensor of dim [nb_target_boxes, h, w]

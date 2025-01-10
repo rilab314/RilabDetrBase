@@ -1,16 +1,17 @@
 training:
-  lr: 2e-4
-  lr_backbone: 2e-5
-  lr_linear_proj:
-    names: ['reference_points', 'sampling_offsets']
-    mult: 0.1
+  lr: 0.00002
+  lr_backbone_names: ['backbone.0']
+  lr_backbone: 0.00002
+  lr_linear_proj_names: ['reference_points', 'sampling_offsets']
+  lr_linear_proj_mult: 0.1
   batch_size: 2
-  weight_decay: 1e-4
-  epochs: 50
-  lr_drop: 40
+  weight_decay: 0.0001
+  epochs: 10
+  lr_drop: 8
   lr_drop_epochs: null
   clip_max_norm: 0.1
   sgd: false
+  num_workers: 2
 
 dataset:
   name: 'coco'
@@ -46,8 +47,8 @@ dataset:
       gamma_limit: [80, 120]
       p: 0.5
     gauss_noise:
-      var_limit: [10.0, 50.0]
-      mean: 0
+      std_range: [0.2, 0.44]
+      mean_range: [0.0, 0.0]
       p: 0.5
 
 backbone:
@@ -97,5 +98,4 @@ runtime:
   resume: ''
   start_epoch: 0
   eval: false
-  num_workers: 2
   cache_mode: false

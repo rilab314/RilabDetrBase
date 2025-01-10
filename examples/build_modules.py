@@ -70,21 +70,12 @@ def check_defm_detr_outputs():
         print_data(batch, title='batch')
         nested_tensor = nested_tensor_from_batch_data(batch)
         print('nested_tensor:', nested_tensor.tensors.shape, nested_tensor.mask.shape)
-        output = model(nested_tensor)
+        output = model(nested_tensor)        
         print_data(output, title='output')
-        if k > 1:
-            break
-    return
-
-
-    image = np.random.randint(0, 255, (1, 3, 384, 384), dtype=np.uint8)
-    mask = np.zeros((1, 384, 384), dtype=bool)
-    sample = NestedTensor(torch.from_numpy(image).to(torch.float32).to(device), 
-                          torch.from_numpy(mask).to(torch.bool).to(device))
-    print_model(model, max_depth=4)
-    print_model(model.transformer.decoder, max_depth=3)
-    outputs = model(sample)
-    print_data(outputs, title='outputs')
+        target = [item['targets'] for item in batch]
+        loss = criterion(output, target)
+        print_data(loss, title='loss')
+        break
 
 
 if __name__ == "__main__":
