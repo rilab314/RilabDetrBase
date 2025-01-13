@@ -1,21 +1,55 @@
 training:
-  lr: 2e-4
-  lr_backbone: 2e-5
-  lr_linear_proj:
-    names: ['reference_points', 'sampling_offsets']
-    mult: 0.1
+  lr: 0.00002
+  lr_backbone_names: ['backbone.0']
+  lr_backbone: 0.00002
+  lr_linear_proj_names: ['reference_points', 'sampling_offsets']
+  lr_linear_proj_mult: 0.1
   batch_size: 2
-  weight_decay: 1e-4
-  epochs: 50
-  lr_drop: 40
+  weight_decay: 0.0001
+  epochs: 10
+  lr_drop: 8
   lr_drop_epochs: null
   clip_max_norm: 0.1
   sgd: false
+  num_workers: 2
 
 dataset:
   name: 'coco'
-  path: './data/coco'
+  path: '/home/dolphin/choi_ws/SatLaneDet_2024/dataset/soccer-players'
   num_classes: 20
+  batch_size: 4
+  image_height: 384
+  image_width: 384
+  train:
+    augmentation: true
+  val:
+    augmentation: false
+  test:
+    augmentation: false
+  augmentation:
+    horizontal_flip:
+      p: 0.5
+    random_resized_crop:
+      size: [384, 384]
+      scale: [0.5, 1.0]
+      ratio: [0.75, 1.333]
+      p: 1.0
+    random_brightness_contrast:
+      brightness_limit: 0.2
+      contrast_limit: 0.2
+      p: 0.5
+    hue_saturation_value:
+      hue_shift_limit: 20
+      sat_shift_limit: 30
+      val_shift_limit: 20
+      p: 0.5
+    random_gamma:
+      gamma_limit: [80, 120]
+      p: 0.5
+    gauss_noise:
+      std_range: [0.2, 0.44]
+      mean_range: [0.0, 0.0]
+      p: 0.5
 
 backbone:
   type: 'SwinV2_384'  # 'ResNet50_Clip'
@@ -64,5 +98,4 @@ runtime:
   resume: ''
   start_epoch: 0
   eval: false
-  num_workers: 2
   cache_mode: false

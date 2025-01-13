@@ -305,6 +305,11 @@ def nested_tensor_from_tensor_list(tensor_list: List[Tensor]):
     return NestedTensor(tensor, mask)
 
 
+def nested_tensor_from_batch_data(batch_data: List[dict]):
+    image_list = [item['image'] for item in batch_data]
+    return nested_tensor_from_tensor_list(image_list)
+
+
 class NestedTensor(object):
     def __init__(self, tensors, mask: Optional[Tensor]):
         self.tensors = tensors
