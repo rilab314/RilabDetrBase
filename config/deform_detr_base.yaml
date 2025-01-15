@@ -6,7 +6,7 @@ training:
   lr_linear_proj_mult: 0.1
   batch_size: 2
   weight_decay: 0.0001
-  epochs: 10
+  epochs: 5
   lr_drop: 8
   lr_drop_epochs: null
   clip_max_norm: 0.1
