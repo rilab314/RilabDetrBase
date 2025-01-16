@@ -4,3 +4,4 @@ build
 dist
 *.egg-info
 *_out.*
+deform_detr_base.yaml
