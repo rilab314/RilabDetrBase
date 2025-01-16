@@ -481,6 +481,18 @@ def inverse_sigmoid(x, eps=1e-5):
     return torch.log(x1/x2)
 
 
+def get_sizes_and_ids(targets, device):
+    target_sizes = []
+    image_ids = []
+    for t in targets:
+        h, w = t["size"]
+        target_sizes.append([h.item(), w.item()])
+        image_ids.append(t["image_id"].item())
+    target_sizes = torch.tensor(target_sizes, dtype=torch.float32, device=device)
+    image_ids = torch.tensor(image_ids, dtype=torch.long, device=device)
+    return target_sizes, image_ids
+
+
 class MLP(nn.Module):
     """ Very simple multi-layer perceptron (also called FFN)"""
 

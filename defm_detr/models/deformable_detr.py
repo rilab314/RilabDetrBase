@@ -223,7 +223,7 @@ def build_deformable_detr(cfg):
     criterion = SetCriterion(cfg.dataset.num_classes, matcher, losses, focal_alpha=cfg.losses.focal_alpha)
     criterion.to(device)
 
-    postprocessors = {'bbox': PostProcess().to(device)}
+    postprocessors = {'bbox': PostProcess(cfg.evaluation.topk, cfg.evaluation.score_thresh).to(device)}
     if cfg.transformer.segmentation:
         postprocessors['segm'] = PostProcessSegm().to(device)
     return model, criterion, postprocessors

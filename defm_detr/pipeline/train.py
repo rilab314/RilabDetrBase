@@ -15,7 +15,7 @@ from defm_detr.models.lightning_detr import LitDeformableDETR
 def train():
     cfg = load_config()
     pl.seed_everything(cfg.runtime.seed, workers=True)  # reproducibility
-    tb_logger = TensorBoardLogger(save_dir=os.path.join(os.path.dirname(settings.project_root), 'tblog'), name="defm_detr")
+    tb_logger = TensorBoardLogger(save_dir=cfg.runtime.output_dir, name=cfg.runtime.logger_name)
 
     train_loader = create_dataloader(cfg, 'train')
     val_loader = create_dataloader(cfg, 'val')

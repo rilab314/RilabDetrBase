@@ -6,7 +6,7 @@ training:
   lr_linear_proj_mult: 0.1
   batch_size: 2
   weight_decay: 0.0001
-  epochs: 5
+  epochs: 10
   lr_drop: 8
   lr_drop_epochs: null
   clip_max_norm: 0.1
@@ -22,8 +22,10 @@ dataset:
   image_width: 384
   train:
     augmentation: true
+    coco_ann_file: 'instances_train.json'
   val:
     augmentation: false
+    coco_ann_file: 'instances_val.json'
   test:
     augmentation: false
   augmentation:
@@ -91,8 +93,13 @@ losses:
   accuracy: true
   focal_alpha: 0.25
 
+evaluation:
+  topk: 100
+  score_thresh: 0.1
+
 runtime:
-  output_dir: ''
+  output_dir: '/home/dolphin/choi_ws/SatLaneDet_2024/tblog'
+  logger_name: 'defm_detr'
   device: 'cuda'
   seed: 42
   resume: ''

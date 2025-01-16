@@ -95,37 +95,3 @@ class CustomDetectionDataset(Dataset):
         bboxes = transformed['bboxes']
         category_ids = transformed['category_ids']
         return image, bboxes, category_ids
-
-    def create_instances(self, bboxes, category_ids, image_shape):
-        """
-        바운딩 박스와 레이블을 Detectron2의 Instances 객체로 변환합니다.
-
-        Args:
-            bboxes (list): 바운딩 박스 리스트
-            category_ids (list): 클래스 레이블 리스트
-            image_shape (tuple): 변환된 이미지의 크기 (height, width)
-        Returns:
-            instances (Instances): Detectron2 Instances 객체
-        """
-        image_height, image_width = image_shape
-        target = Instances((image_height, image_width))
-
-        if len(bboxes) > 0:
-            # YOLO 형식의 바운딩 박스를 Detectron2 형식으로 변환
-            boxes = []
-            for bbox in bboxes:
-                center_x, center_y, bbox_width, bbox_height = bbox
-                x_min = (center_x - bbox_width / 2) * image_width
-                y_min = (center_y - bbox_height / 2) * image_height
-                x_max = (center_x + bbox_width / 2) * image_width
-                y_max = (center_y + bbox_height / 2) * image_height
-                boxes.append([x_min, y_min, x_max, y_max])
-            boxes = torch.tensor(boxes, dtype=torch.float32)
-            target.gt_boxes = Boxes(boxes)
-            target.gt_classes = torch.tensor(category_ids, dtype=torch.int64)
-        else:
-            # 바운딩 박스가 없을 경우 빈 텐서를 설정
-            target.gt_boxes = Boxes(torch.zeros((0, 4), dtype=torch.float32))
-            target.gt_classes = torch.tensor([], dtype=torch.int64)
-
-        return target
