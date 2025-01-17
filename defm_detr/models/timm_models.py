@@ -9,7 +9,7 @@ from dataclasses import dataclass
 import settings
 from defm_detr.models.backbone import Joiner, build_position_encoding
 from defm_detr.models.position_encoding import NestedTensor
-from config.config import load_config
+from configs.config import CfgNode
 
 device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 

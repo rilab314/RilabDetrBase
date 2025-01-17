@@ -8,7 +8,7 @@ if project_root not in sys.path:
     sys.path.append(project_root)
 
 from data.custom_detection_dataset import CustomDetectionDataset
-from config.config import load_config
+from configs.config import CfgNode
 
 
 def create_coco_annotations(cfg, split='train', output_json='coco_annotations.json'):
@@ -94,7 +94,7 @@ def create_coco_annotations(cfg, split='train', output_json='coco_annotations.js
 
 
 if __name__ == "__main__":
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     out_file = os.path.join(cfg.dataset.path, 'train', 'instances_train.json')
     create_coco_annotations(cfg=cfg, split='train', output_json=out_file)
     out_file = os.path.join(cfg.dataset.path, 'val', 'instances_val.json')

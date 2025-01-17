@@ -4,7 +4,7 @@ import numpy as np
 
 import settings
 from data.custom_detection_dataset import CustomDetectionDataset
-from config.config import load_config
+from configs.config import CfgNode
 from utility.print_util import print_data
 
 
@@ -65,7 +65,7 @@ class DatasetVisualizer:
 
 
 def visualize_detection_dataset():
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     visualizer = DatasetVisualizer(cfg, 'train' )
     visualizer.display_dataset_frames()
 

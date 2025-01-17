@@ -11,14 +11,14 @@ from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
 import settings
-from config.config import load_config
+from configs.config import CfgNode
 from defm_detr.models.lightning_detr import LitDeformableDETR
 from defm_detr.pipeline.dataloader import create_dataloader
 from defm_detr.util.misc import get_sizes_and_ids
 
 
 def evaluate(version: int = -1):
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     seed_everything(cfg.runtime.seed, workers=True)
     
     log_dir = get_log_dir(cfg, version)

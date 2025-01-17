@@ -5,7 +5,7 @@ import torch
 
 import settings
 from examples.example_dataset import DatasetVisualizer
-from config.config import load_config
+from configs.config import CfgNode
 from utility.print_util import print_data
 
 
@@ -30,7 +30,7 @@ class DataLoaderVisualizer(DatasetVisualizer):
 
 
 def visualize_detection_batch():
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     visualizer = DataLoaderVisualizer(cfg, 'train', batch_size=4)
     visualizer.display_dataset_frames()
 

@@ -8,7 +8,7 @@ import torch
 from torch.utils.data import DataLoader
 
 import settings
-from config.config import load_config
+from configs.config import CfgNode
 from models.timm_models import build_hf_backbone
 from utility.print_util import print_model, print_data
 from models.deformable_transformer import build_deforamble_transformer
@@ -21,7 +21,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 def create_modules():
     print('\n========== config ==========\n')
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     # print(cfg)
     print('\n========== backbone ==========\n')
     backbone = build_hf_backbone(cfg)
@@ -39,7 +39,7 @@ def create_modules():
 
 
 def check_backbone_outputs():
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     model = build_hf_backbone(cfg)
     image = np.random.rand(1, 3, 384, 384)
     mask = np.zeros((1, 384, 384), dtype=bool)
@@ -55,7 +55,7 @@ def collate_fn(batch):
     return batch
 
 def check_defm_detr_outputs():
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     dataset = CustomDetectionDataset(cfg, 'train')
     dataloader = DataLoader(
             dataset, 

@@ -7,13 +7,13 @@ import pytorch_lightning as pl
 from pytorch_lightning.loggers import TensorBoardLogger
 
 import settings
-from config.config import load_config
+from configs.config import CfgNode
 from defm_detr.pipeline.dataloader import create_dataloader
 from defm_detr.models.lightning_detr import LitDeformableDETR
 
 
 def train():
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     pl.seed_everything(cfg.runtime.seed, workers=True)  # reproducibility
     tb_logger = TensorBoardLogger(save_dir=cfg.runtime.output_dir, name=cfg.runtime.logger_name)
 
