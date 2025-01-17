@@ -1,5 +1,5 @@
 import os
-root_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
+workspace_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
 _base_ = ['dataset/soccer_players.py']
 
@@ -96,7 +96,7 @@ params = dict(
         score_thresh=0.1),
 
     runtime=dict(
-        output_dir=os.path.join(root_path, "tblog"),
+        output_dir=os.path.join(workspace_path, "tblog"),
         logger_name="defm_detr",
         device="cuda",
         seed=42,

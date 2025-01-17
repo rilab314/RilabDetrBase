@@ -2,14 +2,14 @@ import cv2
 import numpy as np
 
 import settings
-from datasets.soccer_players import SoccerPlayersDataset
+from datasets import build_dataset
 from configs.config import CfgNode
 from util.print_util import print_data
 
 
 class DatasetVisualizer:
     def __init__(self, cfg, split: str):
-        self.dataset = SoccerPlayersDataset(cfg, split)
+        self.dataset = build_dataset(cfg, split)
     
     def display_dataset_frames(self):
         total_frames = len(self.dataset)

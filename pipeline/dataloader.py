@@ -2,12 +2,12 @@ import torch
 from typing import List
 from util.misc import nested_tensor_from_tensor_list
 from torch.utils.data import DataLoader
-from datasets.soccer_players import SoccerPlayersDataset
+from datasets import build_dataset
 
 
 def custom_collate_fn(batch: List[dict]):
     """
-    batch는 SoccerPlayersDataset에서 반환한 dict들의 리스트
+    batch는 Dataset에서 반환한 dict들의 리스트
     [
       {
         'image': Tensor(3, H, W),
@@ -47,7 +47,7 @@ def custom_collate_fn(batch: List[dict]):
 
 
 def create_dataloader(cfg, split='train'):
-    dataset = SoccerPlayersDataset(cfg, split=split)
+    dataset = build_dataset(cfg, split=split)
     dataloader = DataLoader(
         dataset,
         batch_size=cfg.training.batch_size,

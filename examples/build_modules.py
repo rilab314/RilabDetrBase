@@ -14,7 +14,7 @@ from util.print_util import print_model, print_data
 from model.deformable_transformer import build_deforamble_transformer
 from model import build_model
 from util.misc import NestedTensor, nested_tensor_from_batch_data
-from datasets.soccer_players import SoccerPlayersDataset
+from datasets import build_dataset
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -56,7 +56,7 @@ def collate_fn(batch):
 
 def check_defm_detr_outputs():
     cfg = CfgNode.from_file('defm_detr_base')
-    dataset = SoccerPlayersDataset(cfg, 'train')
+    dataset = build_dataset(cfg, 'train')
     dataloader = DataLoader(
             dataset, 
             batch_size=4,
