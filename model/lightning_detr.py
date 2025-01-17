@@ -3,12 +3,11 @@ import json
 import torch
 import pytorch_lightning as pl
 from torch.optim.lr_scheduler import StepLR
-from models import build_model
-from util.misc import nested_tensor_from_tensor_list
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-from defm_detr.util.misc import get_sizes_and_ids
+from model import build_model
+from util.misc import get_sizes_and_ids
 
 
 def match_name_keywords(n, name_keywords):

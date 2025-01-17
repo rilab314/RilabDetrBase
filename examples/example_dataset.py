@@ -1,16 +1,15 @@
 import cv2
-import torch
 import numpy as np
 
 import settings
-from data.custom_detection_dataset import CustomDetectionDataset
+from datasets.soccer_players import SoccerPlayersDataset
 from configs.config import CfgNode
-from utility.print_util import print_data
+from util.print_util import print_data
 
 
 class DatasetVisualizer:
     def __init__(self, cfg, split: str):
-        self.dataset = CustomDetectionDataset(cfg, split)
+        self.dataset = SoccerPlayersDataset(cfg, split)
     
     def display_dataset_frames(self):
         total_frames = len(self.dataset)

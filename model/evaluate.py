@@ -12,9 +12,9 @@ from pycocotools.cocoeval import COCOeval
 
 import settings
 from configs.config import CfgNode
-from defm_detr.models.lightning_detr import LitDeformableDETR
-from defm_detr.pipeline.dataloader import create_dataloader
-from defm_detr.util.misc import get_sizes_and_ids
+from model.lightning_detr import LitDeformableDETR
+from pipeline.dataloader import create_dataloader
+from util.misc import get_sizes_and_ids
 
 
 def evaluate(version: int = -1):

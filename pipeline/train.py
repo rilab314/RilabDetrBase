@@ -8,8 +8,8 @@ from pytorch_lightning.loggers import TensorBoardLogger
 
 import settings
 from configs.config import CfgNode
-from defm_detr.pipeline.dataloader import create_dataloader
-from defm_detr.models.lightning_detr import LitDeformableDETR
+from pipeline.dataloader import create_dataloader
+from model.lightning_detr import LitDeformableDETR
 
 
 def train():

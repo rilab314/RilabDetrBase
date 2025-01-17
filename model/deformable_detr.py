@@ -15,7 +15,6 @@ import torch.nn.functional as F
 from torch import nn
 import math
 
-import settings
 from util.misc import NestedTensor, nested_tensor_from_tensor_list, inverse_sigmoid
 
 from .timm_models import build_hf_backbone

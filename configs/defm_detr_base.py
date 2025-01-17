@@ -1,4 +1,7 @@
+import os
+root_path = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 
+_base_ = ['dataset/soccer_players.py']
 
 params = dict(
     training=dict(
@@ -15,13 +18,8 @@ params = dict(
         clip_max_norm=0.1,
         sgd=False,
         num_workers=2),
+
     dataset=dict(
-        name="coco",
-        path="/home/dolphin/choi_ws/SatLaneDet_2024/dataset/soccer-players",
-        num_classes=20,
-        batch_size=4,
-        image_height=384,
-        image_width=384,
         train=dict(
             augmentation=True,
             coco_ann_file="instances_train.json"),
@@ -49,9 +47,10 @@ params = dict(
                 gamma_limit=[80, 120],
                 p=0.5),
             gauss_noise=dict(
-                std_range=[0.2, 0.44],
+                std_range=[0.02, 0.05],
                 mean_range=[0.0, 0.0],
                 p=0.5))),
+
     backbone=dict(
         type="SwinV2_384",  # 'ResNet50_Clip'
         output_layers=["layer2", "layer3", "layer4"],
@@ -59,6 +58,7 @@ params = dict(
         position_embedding=dict(
             type="sine",
             scale=6.283185307179586)),  # 2 * pi
+
     transformer=dict(
         enc_layers=6,
         dec_layers=6,
@@ -75,10 +75,12 @@ params = dict(
         two_stage=True,
         segmentation=False,
         frozen_weights=False),
+
     matcher=dict(
         class_cost=2,  # TODO check
         bbox_cost=5,
         giou_cost=2),
+
     losses=dict(
         cls_loss=2,
         bbox_loss=5,
@@ -88,11 +90,13 @@ params = dict(
         cardinality=True,
         accuracy=True,
         focal_alpha=0.25),
+
     evaluation=dict(
         topk=100,
         score_thresh=0.1),
+
     runtime=dict(
-        output_dir="/home/dolphin/choi_ws/SatLaneDet_2024/tblog",
+        output_dir=os.path.join(root_path, "tblog"),
         logger_name="defm_detr",
         device="cuda",
         seed=42,

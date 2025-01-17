@@ -111,10 +111,7 @@ def merge_dicts(base, new):
 def example():
     # 사용 예시
     cfg = CfgNode.from_file('defm_detr_base')
-    print('backbone_name: ', cfg.backbone.type)
-    print('encoder layers: ', cfg.transformer.enc_layers)
-    print('decoder layers: ', cfg.transformer.dec_layers)
-    print(cfg)
+    print(cfg.dataset)
 
 
 if __name__ == "__main__":

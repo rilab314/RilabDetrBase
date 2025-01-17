@@ -9,12 +9,12 @@ from torch.utils.data import DataLoader
 
 import settings
 from configs.config import CfgNode
-from models.timm_models import build_hf_backbone
-from utility.print_util import print_model, print_data
-from models.deformable_transformer import build_deforamble_transformer
-from models import build_model
+from model.timm_models import build_hf_backbone
+from util.print_util import print_model, print_data
+from model.deformable_transformer import build_deforamble_transformer
+from model import build_model
 from util.misc import NestedTensor, nested_tensor_from_batch_data
-from data.custom_detection_dataset import CustomDetectionDataset
+from datasets.soccer_players import SoccerPlayersDataset
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -56,7 +56,7 @@ def collate_fn(batch):
 
 def check_defm_detr_outputs():
     cfg = CfgNode.from_file('defm_detr_base')
-    dataset = CustomDetectionDataset(cfg, 'train')
+    dataset = SoccerPlayersDataset(cfg, 'train')
     dataloader = DataLoader(
             dataset, 
             batch_size=4,
