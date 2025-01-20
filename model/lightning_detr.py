@@ -6,8 +6,7 @@ from torch.optim.lr_scheduler import StepLR
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
-from model import build_model
-from util.misc import get_sizes_and_ids
+from util.misc import get_sizes_and_ids, build_instance
 
 
 def match_name_keywords(n, name_keywords):
@@ -17,14 +16,27 @@ def match_name_keywords(n, name_keywords):
             break
     return out
 
-class LitDeformableDETR(pl.LightningModule):
-    def __init__(self, cfg):
-        super().__init__()
-        self.model, self.criterion, self.postprocessors = build_model(cfg)
-        self.cfg = cfg
-        self.save_hyperparameters()
-        self.loss_weights = {k: v for k, v in cfg.losses.to_dict().items() if k.endswith('_loss')}
 
+class LitDeformableDETR(pl.LightningModule):
+    @staticmethod
+    def build_from_cfg(cfg):
+        model = build_instance(cfg.core_model.module_name, cfg.core_model.class_name, cfg)
+        criterion = build_instance(cfg.criterion.module_name, cfg.criterion.class_name, cfg)
+        box_postprocessor = build_instance(cfg.postprocessors.bbox.module_name, cfg.postprocessors.bbox.class_name, cfg)
+        postprocessors = {"bbox": box_postprocessor}
+        model = LitDeformableDETR(cfg, model, criterion, postprocessors)
+        device = torch.device(cfg.runtime.device)
+        model.to(device)
+        return model
+
+    def __init__(self, cfg, model, criterion, postprocessors):
+        super().__init__()
+        self.model = model
+        self.criterion = criterion
+        self.postprocessors = postprocessors
+        self.cfg = cfg
+        self.loss_weights = {k: v for k, v in cfg.losses.to_dict().items() if k.endswith('_loss')}
+        self.save_hyperparameters(ignore=['model', 'criterion'])
         n_parameters = sum(p.numel() for p in self.model.parameters() if p.requires_grad)
         print(f"[LitDeformableDETR] Number of params: {n_parameters}")
         val_split = "val"

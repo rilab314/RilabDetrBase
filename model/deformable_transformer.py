@@ -22,6 +22,23 @@ from util.misc import MLP
 
 
 class DeformableTransformer(nn.Module):
+    @staticmethod
+    def build_from_cfg(cfg):
+        return DeformableTransformer(
+            num_classes=cfg.dataset.num_classes,
+            d_model=cfg.transformer.hidden_dim,
+            nhead=cfg.transformer.nheads,
+            num_encoder_layers=cfg.transformer.enc_layers,
+            num_decoder_layers=cfg.transformer.dec_layers,
+            dim_feedforward=cfg.transformer.dim_feedforward,
+            dropout=cfg.transformer.dropout,
+            num_feature_levels=cfg.transformer.num_feature_levels,
+            dec_n_points=cfg.transformer.dec_n_points,
+            enc_n_points=cfg.transformer.enc_n_points,
+            two_stage=cfg.transformer.two_stage,
+            two_stage_num_proposals=cfg.transformer.num_queries,
+        )
+
     def __init__(self, num_classes: int, d_model=256, nhead=8,
                  num_encoder_layers=6, num_decoder_layers=6, dim_feedforward=1024, dropout=0.1,
                  activation="relu", return_intermediate_dec=False,
@@ -377,23 +394,3 @@ def _get_activation_fn(activation):
     if activation == "glu":
         return F.glu
     raise RuntimeError(F"activation should be relu/gelu, not {activation}.")
-
-
-def build_deforamble_transformer(cfg):
-    return DeformableTransformer(
-        num_classes=cfg.dataset.num_classes,
-        d_model=cfg.transformer.hidden_dim,
-        nhead=cfg.transformer.nheads,
-        num_encoder_layers=cfg.transformer.enc_layers,
-        num_decoder_layers=cfg.transformer.dec_layers,
-        dim_feedforward=cfg.transformer.dim_feedforward,
-        dropout=cfg.transformer.dropout,
-        activation="relu",
-        return_intermediate_dec=True,
-        num_feature_levels=cfg.transformer.num_feature_levels,
-        dec_n_points=cfg.transformer.dec_n_points,
-        enc_n_points=cfg.transformer.enc_n_points,
-        two_stage=cfg.transformer.two_stage,
-        two_stage_num_proposals=cfg.transformer.num_queries)
-
-

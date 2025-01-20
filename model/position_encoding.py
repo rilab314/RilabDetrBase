@@ -16,8 +16,6 @@ from torch import nn
 
 from util.misc import NestedTensor
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
 
 class PositionEmbeddingSine(nn.Module):
     """
@@ -96,4 +94,6 @@ def build_position_encoding(cfg):
     else:
         raise ValueError(f"not supported {cfg.position_embedding}")
 
+    device = torch.device(cfg.runtime.device)
+    position_embedding.to(device)
     return position_embedding

@@ -9,9 +9,7 @@ from dataclasses import dataclass
 import settings
 from model.backbone import Joiner, build_position_encoding
 from model.position_encoding import NestedTensor
-from configs.config import CfgNode
-
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+from util.misc import build_instance
 
 
 @dataclass
@@ -23,9 +21,9 @@ class LayerInfo:
 
 
 class TimmModel(nn.Module):
-    def __init__(self, model_name, pretrained=True, output_names=List[str]):
+    def __init__(self, model_name:str, output_names:List[str], pretrained=True):
         super().__init__()
-        self._model = timm.create_model(model_name, pretrained=pretrained).to(device)
+        self._model = timm.create_model(model_name, pretrained=pretrained)
         self._preprocess = transforms.Compose([
             transforms.Normalize(mean=self._model.default_cfg['mean'], std=self._model.default_cfg['std'])
         ])
@@ -58,7 +56,7 @@ class TimmModel(nn.Module):
         tensors = {}
         for name, feature in features.items():
             B, C, H, W = feature.shape
-            mask = torch.zeros((B, H, W), dtype=torch.bool).to(device)
+            mask = torch.zeros((B, H, W), dtype=torch.bool).to(feature.device)
             tensors[name] = NestedTensor(feature, mask)
         return tensors
     
@@ -76,8 +74,17 @@ class TimmModel(nn.Module):
 
 
 class ResNet50_Clip(TimmModel):
-    def __init__(self, output_names):
-        super().__init__('resnet50_clip.cc12m', pretrained=True, output_names=output_names)
+    @staticmethod
+    def build_from_cfg(cfg):
+        backbone = ResNet50_Clip(output_names=cfg.backbone.output_layers)
+        position_embedding = build_position_encoding(cfg)
+        model = Joiner(backbone, position_embedding)
+        device = torch.device(cfg.runtime.device)
+        model.to(device)
+        return model
+
+    def __init__(self, output_names:List[str], pretrained=True):
+        super().__init__(model_name='resnet50_clip.cc12m', output_names=output_names, pretrained=pretrained)
         self._interm_layers = [LayerInfo(name='layer1', stride=4, channels=128, module=self._model.stages[0]),
                                LayerInfo(name='layer2', stride=8, channels=256, module=self._model.stages[1]),
                                LayerInfo(name='layer3', stride=16, channels=512, module=self._model.stages[2]),
@@ -86,8 +93,17 @@ class ResNet50_Clip(TimmModel):
 
 
 class SwinV2_384(TimmModel):
-    def __init__(self, output_names):
-        super().__init__('swin_base_patch4_window12_384.ms_in22k', output_names=output_names)
+    @staticmethod
+    def build_from_cfg(cfg):
+        backbone = SwinV2_384(output_names=cfg.backbone.output_layers)
+        position_embedding = build_position_encoding(cfg)
+        model = Joiner(backbone, position_embedding)
+        device = torch.device(cfg.runtime.device)
+        model.to(device)
+        return model
+
+    def __init__(self, output_names:List[str], pretrained=True):
+        super().__init__(model_name='swin_base_patch4_window12_384.ms_in22k', output_names=output_names, pretrained=pretrained)
         self._interm_layers = [LayerInfo(name='layer1', stride=4, channels=128, module=self._model.layers[0]),
                                LayerInfo(name='layer2', stride=8, channels=256, module=self._model.layers[1]),
                                LayerInfo(name='layer3', stride=16, channels=512, module=self._model.layers[2]),
@@ -100,19 +116,6 @@ class SwinV2_384(TimmModel):
         # (B, H, W, C) -> (B, C, H, W)
             feature = feature.permute(0, 3, 1, 2).contiguous()
             B, C, H, W = feature.shape
-            mask = torch.zeros((B, H, W), dtype=torch.bool).to(device)
+            mask = torch.zeros((B, H, W), dtype=torch.bool).to(feature.device)
             tensors[name] = NestedTensor(feature, mask)
         return tensors
-
-
-def build_hf_backbone(cfg):
-    if cfg.backbone.type == 'ResNet50_Clip':
-        backbone = ResNet50_Clip(output_names=cfg.backbone.output_layers)
-    elif cfg.backbone.type == 'SwinV2_384':
-        backbone = SwinV2_384(output_names=cfg.backbone.output_layers)
-    else:
-        raise ValueError(f"Backbone {cfg.backbone.type} not supported")
-    
-    position_embedding = build_position_encoding(cfg)
-    model = Joiner(backbone, position_embedding)
-    return model

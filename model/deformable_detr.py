@@ -14,19 +14,11 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 import math
+import copy
 
 from util.misc import NestedTensor, nested_tensor_from_tensor_list, inverse_sigmoid
-
-from .timm_models import build_hf_backbone
-from .criterion import SetCriterion
-from .matcher import build_matcher
-from .postprocess import PostProcess
-from .segmentation import DETRsegm, PostProcessSegm
-from .deformable_transformer import build_deforamble_transformer
-import copy
-from util.misc import MLP
-
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+from util.misc import MLP, build_instance
+from util.print_util import print_data
 
 
 def _get_clones(module, N):
@@ -35,6 +27,21 @@ def _get_clones(module, N):
 
 class DeformableDETR(nn.Module):
     """ This is the Deformable DETR module that performs object detection """
+    @staticmethod
+    def build_from_cfg(cfg):
+        backbone = build_instance(cfg.backbone.module_name, cfg.backbone.class_name, cfg)
+        transformer = build_instance(cfg.transformer.module_name, cfg.transformer.class_name, cfg)
+        model = DeformableDETR(backbone, transformer, 
+                               num_classes=cfg.dataset.num_classes, 
+                               num_queries=cfg.transformer.num_queries, 
+                               num_feature_levels=cfg.transformer.num_feature_levels, 
+                               aux_loss=cfg.transformer.aux_loss, 
+                               with_box_refine=cfg.transformer.with_box_refine, 
+                               two_stage=cfg.transformer.two_stage)
+        device = torch.device(cfg.runtime.device)
+        model.to(device)
+        return model
+
     def __init__(self, backbone, transformer, num_classes: int, num_queries: int, num_feature_levels: int,
                  aux_loss: bool = True, with_box_refine: bool = False, two_stage: bool = False):
         """ Initializes the model.
@@ -127,9 +134,11 @@ class DeformableDETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
+        print_data(samples, title='samples')
         if not isinstance(samples, NestedTensor):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
+        print_data(features, title='features')
 
         srcs = []
         masks = []
@@ -167,7 +176,11 @@ class DeformableDETR(nn.Module):
             reference = inverse_sigmoid(reference)
             outputs_class = self.class_embed[lvl](hs[lvl])
             tmp = self.bbox_embed[lvl](hs[lvl])
+            print('hs:', hs.shape)
+            print('bbox_embed[lvl]:', self.bbox_embed[lvl])
             if reference.shape[-1] == 4:
+                print('reference:', reference.shape)
+                print('tmp:', tmp.shape)
                 tmp += reference
             else:
                 assert reference.shape[-1] == 2
@@ -194,35 +207,3 @@ class DeformableDETR(nn.Module):
         # as a dict having both a Tensor and a list.
         return [{'pred_logits': a, 'pred_boxes': b}
                 for a, b in zip(outputs_class[:-1], outputs_coord[:-1])]
-
-
-def build_deformable_detr(cfg):
-    backbone = build_hf_backbone(cfg)
-    transformer = build_deforamble_transformer(cfg)
-    model = DeformableDETR(
-        backbone,
-        transformer,
-        num_classes=cfg.dataset.num_classes,
-        num_queries=cfg.transformer.num_queries,
-        num_feature_levels=cfg.transformer.num_feature_levels,
-        aux_loss=cfg.transformer.aux_loss,
-        with_box_refine=cfg.transformer.with_box_refine,
-        two_stage=cfg.transformer.two_stage,
-    )
-    if cfg.transformer.segmentation:
-        model = DETRsegm(model, freeze_detr=cfg.transformer.frozen_weights)
-    model.to(device)
-    
-    matcher = build_matcher(cfg)
-    losses = cfg.losses.to_dict()
-    losses = [k for k, v in losses.items() if k != 'focal_alpha' and v != 0 and v != False]
-    if cfg.transformer.segmentation is False:
-        losses.remove('mask_loss')
-        losses.remove('dice_loss')
-    criterion = SetCriterion(cfg.dataset.num_classes, matcher, losses, focal_alpha=cfg.losses.focal_alpha)
-    criterion.to(device)
-
-    postprocessors = {'bbox': PostProcess(cfg.evaluation.topk, cfg.evaluation.score_thresh).to(device)}
-    if cfg.transformer.segmentation:
-        postprocessors['segm'] = PostProcessSegm().to(device)
-    return model, criterion, postprocessors

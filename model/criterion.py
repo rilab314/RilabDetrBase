@@ -19,8 +19,25 @@ from util.misc import (NestedTensor, nested_tensor_from_tensor_list,
 from .segmentation import (dice_loss, sigmoid_focal_loss)
 import copy
 
+from util.misc import build_instance
+
 
 class SetCriterion(nn.Module):
+    @staticmethod
+    def build_from_cfg(cfg):
+        matcher = build_instance(cfg.matcher.module_name, cfg.matcher.class_name, cfg)
+        losses = cfg.losses.to_dict()
+        losses = [k for k, v in losses.items() if k != 'focal_alpha' and v != 0 and v != False]
+        if cfg.transformer.segmentation is False:
+            losses.remove('mask_loss')
+            losses.remove('dice_loss')
+        return SetCriterion(
+            num_classes=cfg.dataset.num_classes,
+            matcher=matcher,
+            loss_names=losses,
+            focal_alpha=cfg.losses.focal_alpha
+        )
+
     ''' This class computes the loss for DETR.
     The process happens in two steps:
         1) we compute hungarian assignment between ground truth boxes and the outputs of the model

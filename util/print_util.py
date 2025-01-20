@@ -2,47 +2,42 @@ import numpy as np
 import torch.nn as nn
 import torch
 
+from util.misc import NestedTensor
+
 
 def print_data(data, indent=2, level=0, title=None):
-    indent_str = ' ' * indent * level  # 들여쓰기 공백
     if title is not None:
-        print(f"{indent_str}<------ {title}")
-    if len(str(data)) < 150:
-        print(f"{indent_str}{data}")
-        return
+        print(f"<------ {title}")
+    print_data_inner(data, '', indent, level)
+    if title is not None:
+        print(f"------>")
 
-    if isinstance(data, dict):
-        for key, value in data.items():                    
-            if isinstance(value, (dict, list)):
-                print(f"{indent_str}{key}:")
-                print_data(value, indent, level+1)
-            else:
-                value_str = str(value)
-                if len(value_str) <= 100:
-                    print(f"{indent_str}{key}: {value_str}")
-                elif isinstance(value, torch.Tensor):
-                    print(f"{indent_str}{key}: tensor{tuple(value.shape)}")
-                elif isinstance(value, np.ndarray):
-                    print(f"{indent_str}{key}: np{value.shape}")
-                else:
-                    print(f"{indent_str}{key}: {str(value)[:100]}")
-    elif isinstance(data, list):
-        for key, value in enumerate(data):
-            if isinstance(value, (dict, list)):
-                print(f"{indent_str}{key}:")
-                print_data(value, indent, level+1)
-            else:
-                value_str = str(value)
-                if len(value_str) <= 100:
-                    print(f"{indent_str}{key}: {value_str}")
-                elif isinstance(value, torch.Tensor):
-                    print(f"{indent_str}{key}: {value.shape}")
-                elif isinstance(value, np.ndarray):
-                    print(f"{indent_str}{key}: {value.shape}")
-                else:
-                    print(f"{indent_str}{key}: {str(value)[:100]} ...")
-    if title is not None:
-        print(f"{indent_str}------>")
+
+def print_data_inner(data, key: str, indent=2, level=0):
+    prefix = spaces = ' ' * indent * level  # 들여쓰기 공백
+    if key:
+        prefix += key + ': '
+    if len(str(data)) < 150:
+        print(f"{prefix}{data}")
+    elif isinstance(data, torch.Tensor):
+        print(f"{prefix}tensor{tuple(data.shape)}")
+    elif isinstance(data, np.ndarray):
+        print(f"{prefix}np{data.shape}")
+    elif isinstance(data, NestedTensor):
+        print(f"{prefix}NestedTensor [tensor{tuple(data.tensors.shape)}, mask{tuple(data.mask.shape)}]")
+    elif isinstance(data, dict):
+        print(f"{prefix}{'{'}")
+        for new_key, value in data.items():                    
+            print_data_inner(value, new_key, indent, level+1)
+        print(f"{spaces}{'}'}")
+    elif isinstance(data, (list, tuple)):
+        print(f"{prefix}{'['}")
+        for new_key, value in enumerate(data):
+            new_key = str(new_key)
+            print_data_inner(value, new_key, indent, level+1)
+        print(f"{spaces}{']'}")
+    else:
+        print(f"{prefix}{str(data)[:100]}")
 
 
 

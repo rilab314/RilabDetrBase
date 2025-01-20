@@ -6,9 +6,9 @@ _base_ = ['dataset/soccer_players.py']
 params = dict(
     training=dict(
         lr=0.00002,
-        lr_backbone_names=["backbone.0"],
+        lr_backbone_names=['backbone.0'],
         lr_backbone=0.00002,
-        lr_linear_proj_names=["reference_points", "sampling_offsets"],
+        lr_linear_proj_names=['reference_points', 'sampling_offsets'],
         lr_linear_proj_mult=0.1,
         batch_size=2,
         weight_decay=0.0001,
@@ -22,10 +22,10 @@ params = dict(
     dataset=dict(
         train=dict(
             augmentation=True,
-            coco_ann_file="instances_train.json"),
+            coco_ann_file='instances_train.json'),
         val=dict(
             augmentation=False,
-            coco_ann_file="instances_val.json"),
+            coco_ann_file='instances_val.json'),
         test=dict(augmentation=False),
         augmentation=dict(
             horizontal_flip=dict(p=0.5),
@@ -51,15 +51,26 @@ params = dict(
                 mean_range=[0.0, 0.0],
                 p=0.5))),
 
+    lightning_model=dict(
+        module_name='model.lightning_detr',
+        class_name='LitDeformableDETR'),
+
+    core_model=dict(
+        module_name='model.deformable_detr',
+        class_name='DeformableDETR'),
+
     backbone=dict(
-        type="SwinV2_384",  # 'ResNet50_Clip'
-        output_layers=["layer2", "layer3", "layer4"],
+        module_name='model.timm_models',
+        class_name=['ResNet50_Clip', 'SwinV2_384'][1],
+        output_layers=['layer2', 'layer3', 'layer4'],
         dilation=False,
         position_embedding=dict(
-            type="sine",
+            type='sine',
             scale=6.283185307179586)),  # 2 * pi
 
     transformer=dict(
+        module_name='model.deformable_transformer',
+        class_name='DeformableTransformer',
         enc_layers=6,
         dec_layers=6,
         num_feature_levels=4,
@@ -77,10 +88,24 @@ params = dict(
         frozen_weights=False),
 
     matcher=dict(
+        module_name='model.matcher',
+        class_name='HungarianMatcher',
         class_cost=2,  # TODO check
         bbox_cost=5,
         giou_cost=2),
 
+    postprocessors=dict(
+        bbox=dict(
+            module_name='model.postprocess',
+            class_name='BoxPostProcess', 
+            topk=100,
+            score_threshold=0.05),),
+
+
+    criterion=dict(
+        module_name='model.criterion',
+        class_name='SetCriterion',
+    ),
     losses=dict(
         cls_loss=2,
         bbox_loss=5,
@@ -96,11 +121,11 @@ params = dict(
         score_thresh=0.1),
 
     runtime=dict(
-        output_dir=os.path.join(workspace_path, "tblog"),
-        logger_name="defm_detr",
-        device="cuda",
+        output_dir=os.path.join(workspace_path, 'tblog'),
+        logger_name='defm_detr',
+        device='cuda',
         seed=42,
-        resume="",
+        resume='',
         start_epoch=0,
         eval=False,
         cache_mode=False)

@@ -13,13 +13,12 @@ if project_root not in sys.path:
 
 from datasets.composer_factory import composer_factory
 
-device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-
 
 class SoccerPlayersDataset(Dataset):
     def __init__(self, cfg, split: str):
         self.root_path = cfg.dataset.path
         self.split = split
+        self.device = torch.device(cfg.runtime.device)
         self.image_dir = str(os.path.join(cfg.dataset.path, self.split, 'images'))
         self.label_dir = str(os.path.join(cfg.dataset.path, self.split, 'labels'))
         image_files = sorted(os.listdir(self.image_dir))
@@ -36,9 +35,9 @@ class SoccerPlayersDataset(Dataset):
         image, bboxes, category_ids = self.apply_augmentation(
             image, bboxes, category_ids
         )
-        image = image.to(device)
-        bboxes = torch.tensor(bboxes, dtype=torch.float32, device=device)
-        category_ids = torch.tensor(category_ids, dtype=torch.int64, device=device)
+        image = image.to(self.device)
+        bboxes = torch.tensor(bboxes, dtype=torch.float32, device=self.device)
+        category_ids = torch.tensor(category_ids, dtype=torch.int64, device=self.device)
         return {
             'image': image,
             'targets': {'boxes': bboxes, 'labels': category_ids},

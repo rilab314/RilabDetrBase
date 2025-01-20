@@ -3,7 +3,14 @@ from torch import nn
 from util import box_ops
 
 
-class PostProcess(nn.Module):
+class BoxPostProcess(nn.Module):
+    @staticmethod
+    def build_from_cfg(cfg):
+        return BoxPostProcess(
+            topk=cfg.postprocessors.bbox.topk,
+            score_threshold=cfg.postprocessors.bbox.score_threshold
+        )
+
     def __init__(self, topk=100, score_threshold=0.05):
         super().__init__()
         self.topk = topk

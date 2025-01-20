@@ -18,6 +18,14 @@ from util.box_ops import box_cxcywh_to_xyxy, generalized_box_iou
 
 
 class HungarianMatcher(nn.Module):
+    @staticmethod
+    def build_from_cfg(cfg):
+        return HungarianMatcher(
+            cost_class=cfg.matcher.class_cost,
+            cost_bbox=cfg.matcher.bbox_cost,
+            cost_giou=cfg.matcher.giou_cost
+        )
+
     """This class computes an assignment between the targets and the predictions of the network
 
     For efficiency reasons, the targets don't include the no_object. Because of this, in general,
@@ -25,10 +33,7 @@ class HungarianMatcher(nn.Module):
     while the others are un-matched (and thus treated as non-objects).
     """
 
-    def __init__(self,
-                 cost_class: float = 1,
-                 cost_bbox: float = 1,
-                 cost_giou: float = 1):
+    def __init__(self, cost_class: float = 1, cost_bbox: float = 1, cost_giou: float = 1):
         """Creates the matcher
 
         Params:
@@ -40,7 +45,7 @@ class HungarianMatcher(nn.Module):
         self.cost_class = cost_class
         self.cost_bbox = cost_bbox
         self.cost_giou = cost_giou
-        assert cost_class != 0 or cost_bbox != 0 or cost_giou != 0, "all costs cant be 0"
+        assert self.cost_class != 0 or self.cost_bbox != 0 or self.cost_giou != 0, "all costs cant be 0"
 
     def forward(self, outputs, targets):
         """ Performs the matching
