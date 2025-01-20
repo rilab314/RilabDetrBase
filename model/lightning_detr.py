@@ -29,8 +29,13 @@ class LitDeformableDETR(pl.LightningModule):
         model.to(device)
         return model
 
-    def __init__(self, cfg, model, criterion, postprocessors):
+    def __init__(self, cfg, model=None, criterion=None, postprocessors=None):
         super().__init__()
+        if model is None:
+            model = build_instance(cfg.core_model.module_name, cfg.core_model.class_name, cfg)
+            criterion = build_instance(cfg.criterion.module_name, cfg.criterion.class_name, cfg)
+            box_postprocessor = build_instance(cfg.postprocessors.bbox.module_name, cfg.postprocessors.bbox.class_name, cfg)
+            postprocessors = {"bbox": box_postprocessor}
         self.model = model
         self.criterion = criterion
         self.postprocessors = postprocessors

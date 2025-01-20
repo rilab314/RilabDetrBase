@@ -134,11 +134,9 @@ class DeformableDETR(nn.Module):
                - "aux_outputs": Optional, only returned when auxilary losses are activated. It is a list of
                                 dictionnaries containing the two above keys for each decoder layer.
         """
-        print_data(samples, title='samples')
         if not isinstance(samples, NestedTensor):
             samples = nested_tensor_from_tensor_list(samples)
         features, pos = self.backbone(samples)
-        print_data(features, title='features')
 
         srcs = []
         masks = []
@@ -176,11 +174,7 @@ class DeformableDETR(nn.Module):
             reference = inverse_sigmoid(reference)
             outputs_class = self.class_embed[lvl](hs[lvl])
             tmp = self.bbox_embed[lvl](hs[lvl])
-            print('hs:', hs.shape)
-            print('bbox_embed[lvl]:', self.bbox_embed[lvl])
             if reference.shape[-1] == 4:
-                print('reference:', reference.shape)
-                print('tmp:', tmp.shape)
                 tmp += reference
             else:
                 assert reference.shape[-1] == 2

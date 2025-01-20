@@ -81,6 +81,7 @@ params = dict(
         num_queries=300,
         dec_n_points=4,
         enc_n_points=4,
+        return_intermediate_dec=True,
         with_box_refine=False,
         aux_loss=True,
         two_stage=True,
@@ -101,11 +102,10 @@ params = dict(
             topk=100,
             score_threshold=0.05),),
 
-
     criterion=dict(
         module_name='model.criterion',
-        class_name='SetCriterion',
-    ),
+        class_name='SetCriterion',),
+
     losses=dict(
         cls_loss=2,
         bbox_loss=5,

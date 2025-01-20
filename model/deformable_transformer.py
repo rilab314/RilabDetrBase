@@ -32,6 +32,7 @@ class DeformableTransformer(nn.Module):
             num_decoder_layers=cfg.transformer.dec_layers,
             dim_feedforward=cfg.transformer.dim_feedforward,
             dropout=cfg.transformer.dropout,
+            return_intermediate_dec=cfg.transformer.return_intermediate_dec,
             num_feature_levels=cfg.transformer.num_feature_levels,
             dec_n_points=cfg.transformer.dec_n_points,
             enc_n_points=cfg.transformer.enc_n_points,
