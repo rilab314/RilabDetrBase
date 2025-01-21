@@ -1,6 +1,15 @@
 # SatelliteLaneDet2024
 
-## config
-
-- config/deform_detr_base-template.yaml: 설정 파일에 대한 템플릿, 이것을 복사해서 deform_detr_base.yaml 파일을 만들어서 사용
-- config/deform_detr_base.yaml: 기본 설정 파일, 여기서 경로 등의 설정을 변경해서 사용
+- `configs/defm_detr_base.py`에 모든 경로는 상대 경로로 설정되어 있어서 아래와 같이 worksapce의 디렉토리 구조만 맞추면 경로를 수정할 필요가 없습니다.
+```
+├── dataset
+│   └── soccer-players
+├── RilabDetrBase
+│   ├── configs
+│   ├── datasets
+│   ├── model
+│   ├── pipeline
+│   └── util
+└── tblog
+```
+- 현재는 `train.py`가 작동하는지 확인하는 용도로 soccer-players 데이터셋만 있습니다.
