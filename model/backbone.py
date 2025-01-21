@@ -7,104 +7,117 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved
 # ------------------------------------------------------------------------
 
-"""
-Backbone modules.
-"""
-from collections import OrderedDict
-
 import torch
 import torch.nn.functional as F
-import torchvision
 from torch import nn
-from torchvision.models._utils import IntermediateLayerGetter
+from torchvision import transforms
 from typing import Dict, List
+import timm
+from dataclasses import dataclass
 
 from util.misc import NestedTensor, is_main_process
-from .position_encoding import build_position_encoding
+from .position_encoding import build_position_encoding, NestedTensor
 
 
-class FrozenBatchNorm2d(torch.nn.Module):
-    """
-    BatchNorm2d where the batch statistics and the affine parameters are fixed.
-
-    Copy-paste from torchvision.misc.ops with added eps before rqsrt,
-    without which any other models than torchvision.models.resnet[18,34,50,101]
-    produce nans.
-    """
-
-    def __init__(self, n, eps=1e-5):
-        super(FrozenBatchNorm2d, self).__init__()
-        self.register_buffer("weight", torch.ones(n))
-        self.register_buffer("bias", torch.zeros(n))
-        self.register_buffer("running_mean", torch.zeros(n))
-        self.register_buffer("running_var", torch.ones(n))
-        self.eps = eps
-
-    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,
-                              missing_keys, unexpected_keys, error_msgs):
-        num_batches_tracked_key = prefix + 'num_batches_tracked'
-        if num_batches_tracked_key in state_dict:
-            del state_dict[num_batches_tracked_key]
-
-        super(FrozenBatchNorm2d, self)._load_from_state_dict(
-            state_dict, prefix, local_metadata, strict,
-            missing_keys, unexpected_keys, error_msgs)
-
-    def forward(self, x):
-        # move reshapes to the beginning
-        # to make it fuser-friendly
-        w = self.weight.reshape(1, -1, 1, 1)
-        b = self.bias.reshape(1, -1, 1, 1)
-        rv = self.running_var.reshape(1, -1, 1, 1)
-        rm = self.running_mean.reshape(1, -1, 1, 1)
-        eps = self.eps
-        scale = w * (rv + eps).rsqrt()
-        bias = b - rm * scale
-        return x * scale + bias
+@dataclass
+class LayerInfo:
+    name: str
+    stride: int
+    channels: int
+    module: nn.Module
 
 
-class BackboneBase(nn.Module):
-    def __init__(self, backbone: nn.Module, train_backbone: bool, return_interm_layers: bool):
+class TimmModel(nn.Module):
+    def __init__(self, model_name:str, output_names:List[str], pretrained=True):
         super().__init__()
-        for name, parameter in backbone.named_parameters():
-            if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:
-                parameter.requires_grad_(False)
-        if return_interm_layers:
-            # return_layers = {"layer1": "0", "layer2": "1", "layer3": "2", "layer4": "3"}
-            return_layers = {"layer2": "0", "layer3": "1", "layer4": "2"}
-            self.strides = [8, 16, 32]
-            self.num_channels = [512, 1024, 2048]
-        else:
-            return_layers = {'layer4': "0"}
-            self.strides = [32]
-            self.num_channels = [2048]
-        self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)
+        self._model = timm.create_model(model_name, pretrained=pretrained)
+        self._preprocess = transforms.Compose([
+            transforms.Normalize(mean=self._model.default_cfg['mean'], std=self._model.default_cfg['std'])
+        ])
+        self._output_layers = output_names
+        self._interm_layers = []
+        self._features = {}
+        self._hooks = []
 
-    def forward(self, tensor_list: NestedTensor):
-        xs = self.body(tensor_list.tensors)
-        out: Dict[str, NestedTensor] = {}
-        for name, x in xs.items():
-            m = tensor_list.mask
-            assert m is not None
-            mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]
-            out[name] = NestedTensor(x, mask)
-        return out
+    def set_hooks(self, interm_layers, output_names):
+        def hook_fn(module, input, output, layer_name):
+            self._features[layer_name] = output
+        
+        output_layers = [layer for layer in interm_layers if layer.name in output_names]
+        for layer_info in output_layers:
+            self._hooks.append(layer_info.module.register_forward_hook(lambda module, input, output, layer_name=layer_info.name: hook_fn(module, input, output, layer_name)))
+    
+    def forward(self, sample: NestedTensor):
+        """
+        samples: NestedTensor
+            - samples.tensor: batched images, [B, 3, H, W]
+            - samples.mask: batched binary mask [B, H, W], containing 1 on padded pixels
+        """
+        image_tensor = self._preprocess(sample.tensors)
+        self._model.eval()
+        with torch.no_grad():
+            output = self._model(image_tensor)
+        return self._post_process(self._features)
+    
+    def _post_process(self, features):
+        tensors = {}
+        for name, feature in features.items():
+            B, C, H, W = feature.shape
+            mask = torch.zeros((B, H, W), dtype=torch.bool).to(feature.device)
+            tensors[name] = NestedTensor(feature, mask)
+        return tensors
+    
+    def remove_hooks(self):
+        for hook in self.hooks:
+            hook.remove()
+
+    @property
+    def strides(self):
+        return [layer.stride for layer in self._interm_layers if layer.name in self._output_layers]
+    
+    @property
+    def num_channels(self):
+        return [layer.channels for layer in self._interm_layers if layer.name in self._output_layers]
 
 
-class Backbone(BackboneBase):
-    """ResNet backbone with frozen BatchNorm."""
-    def __init__(self, name: str,
-                 train_backbone: bool,
-                 return_interm_layers: bool,
-                 dilation: bool):
-        norm_layer = FrozenBatchNorm2d
-        backbone = getattr(torchvision.models, name)(
-            replace_stride_with_dilation=[False, False, dilation],
-            pretrained=is_main_process(), norm_layer=norm_layer)
-        assert name not in ('resnet18', 'resnet34'), "number of channels are hard coded"
-        super().__init__(backbone, train_backbone, return_interm_layers)
-        if dilation:
-            self.strides[-1] = self.strides[-1] // 2
+class ResNet50_Clip(TimmModel):
+    @staticmethod
+    def build_from_cfg(cfg):
+        backbone = ResNet50_Clip(output_names=cfg.backbone.output_layers)
+        return build_joiner_model(backbone, cfg)
+
+    def __init__(self, output_names:List[str], pretrained=True):
+        super().__init__(model_name='resnet50_clip.cc12m', output_names=output_names, pretrained=pretrained)
+        self._interm_layers = [LayerInfo(name='layer1', stride=4, channels=128, module=self._model.stages[0]),
+                               LayerInfo(name='layer2', stride=8, channels=256, module=self._model.stages[1]),
+                               LayerInfo(name='layer3', stride=16, channels=512, module=self._model.stages[2]),
+                               LayerInfo(name='layer4', stride=32, channels=1024, module=self._model.stages[3])]
+        self.set_hooks(self._interm_layers, self._output_layers)
+
+
+class SwinV2_384(TimmModel):
+    @staticmethod
+    def build_from_cfg(cfg):
+        backbone = SwinV2_384(output_names=cfg.backbone.output_layers)
+        return build_joiner_model(backbone, cfg)
+
+    def __init__(self, output_names:List[str], pretrained=True):
+        super().__init__(model_name='swin_base_patch4_window12_384.ms_in22k', output_names=output_names, pretrained=pretrained)
+        self._interm_layers = [LayerInfo(name='layer1', stride=4, channels=128, module=self._model.layers[0]),
+                               LayerInfo(name='layer2', stride=8, channels=256, module=self._model.layers[1]),
+                               LayerInfo(name='layer3', stride=16, channels=512, module=self._model.layers[2]),
+                               LayerInfo(name='layer4', stride=32, channels=1024, module=self._model.layers[3])]
+        self.set_hooks(self._interm_layers, self._output_layers)
+
+    def _post_process(self, features):
+        tensors = {}
+        for name, feature in features.items():
+        # (B, H, W, C) -> (B, C, H, W)
+            feature = feature.permute(0, 3, 1, 2).contiguous()
+            B, C, H, W = feature.shape
+            mask = torch.zeros((B, H, W), dtype=torch.bool).to(feature.device)
+            tensors[name] = NestedTensor(feature, mask)
+        return tensors
 
 
 class Joiner(nn.Sequential):
@@ -127,10 +140,9 @@ class Joiner(nn.Sequential):
         return out, pos
 
 
-def build_backbone(cfg):
+def build_joiner_model(backbone, cfg):
     position_embedding = build_position_encoding(cfg)
-    train_backbone = cfg.lr_backbone > 0
-    return_interm_layers = cfg.masks or (cfg.num_feature_levels > 1)
-    backbone = Backbone(name=cfg.backbone.name, train_backbone=train_backbone, return_interm_layers=return_interm_layers, dilation=cfg.backbone.dilation)
     model = Joiner(backbone, position_embedding)
+    device = torch.device(cfg.runtime.device)
+    model.to(device)
     return model

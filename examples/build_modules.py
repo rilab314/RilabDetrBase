@@ -66,6 +66,6 @@ def check_defm_detr_outputs():
 
 
 if __name__ == "__main__":
-    # create_modules()
-    # check_backbone_outputs()
+    create_modules()
+    check_backbone_outputs()
     check_defm_detr_outputs()

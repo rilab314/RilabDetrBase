@@ -60,7 +60,7 @@ params = dict(
         class_name='DeformableDETR'),
 
     backbone=dict(
-        module_name='model.timm_models',
+        module_name='model.backbone',
         class_name=['ResNet50_Clip', 'SwinV2_384'][1],
         output_layers=['layer2', 'layer3', 'layer4'],
         dilation=False,
