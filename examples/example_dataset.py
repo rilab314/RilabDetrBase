@@ -1,16 +1,15 @@
 import cv2
-import torch
 import numpy as np
 
 import settings
-from data.custom_detection_dataset import CustomDetectionDataset
-from config.config import load_config
-from utility.print_util import print_data
+from datasets import build_dataset
+from configs.config import CfgNode
+from util.print_util import print_data
 
 
 class DatasetVisualizer:
     def __init__(self, cfg, split: str):
-        self.dataset = CustomDetectionDataset(cfg, split)
+        self.dataset = build_dataset(cfg, split)
     
     def display_dataset_frames(self):
         total_frames = len(self.dataset)
@@ -65,7 +64,7 @@ class DatasetVisualizer:
 
 
 def visualize_detection_dataset():
-    cfg = load_config()
+    cfg = CfgNode.from_file('defm_detr_base')
     visualizer = DatasetVisualizer(cfg, 'train' )
     visualizer.display_dataset_frames()
 

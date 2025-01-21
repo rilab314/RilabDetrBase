@@ -1,7 +1,7 @@
 import timm
 import torch.nn as nn
 import settings
-from utility.print_util import print_data, print_model
+from util.print_util import print_data, print_model
 
 
 def view_models():
